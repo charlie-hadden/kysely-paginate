@@ -1,0 +1,37 @@
+{
+  "name": "kysely-paginate",
+  "version": "0.1.0",
+  "description": "Pagination helpers for use with kysely",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/charlie-hadden/kysely-paginate.git"
+  },
+  "author": "Charlie Hadden <charlie@hadden.me>",
+  "engines": {
+    "node": ">= 14.0.0"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/parser": "^5.58.0",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.7"
+  }
+}
