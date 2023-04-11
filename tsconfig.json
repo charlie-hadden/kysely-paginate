@@ -7,8 +7,9 @@
     "strict": true,
     "noImplicitAny": true,
     "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true
   },
-  "include": [".eslintrc.cjs", "**/*.ts", "**/*.cjs", "**/*.mjs"],
+  "include": [".eslintrc.cjs", "vitest.config.ts", "**/*.ts", "**/*.cjs", "**/*.mjs"],
   "exclude": ["node_modules", "dist"]
 }
