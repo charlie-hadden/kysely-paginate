@@ -37,7 +37,7 @@ await db.schema
   .addColumn("authorId", "integer", (col) => col.notNull())
   .execute();
 await db.schema
-  .createIndex("blogPosts_title_index")
+  .createIndex("blogPosts_authorId_index")
   .on("blogPosts")
-  .column("title")
+  .column("authorId")
   .execute();

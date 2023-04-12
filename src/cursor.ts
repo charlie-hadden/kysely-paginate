@@ -23,29 +23,44 @@ export async function executeWithCursorPagination<O>(
   if (opts.after) {
     const cursor = defaultDecodeCursor(opts.after, fieldNames);
 
-    for (const [field, value] of cursor) {
-      qb = qb.where(field, ">", value);
-    }
+    qb = qb.where(({ and, or, cmpr }) => {
+      function apply(index: number) {
+        const [column, value] = cursor[index];
+        const direction = opts.fields[index][1];
+
+        const conditions = [
+          cmpr(column, direction === "asc" ? ">" : "<", value),
+        ];
+
+        if (index < cursor.length - 1) {
+          conditions.push(and([cmpr(column, "=", value), apply(index + 1)]));
+        }
+
+        return or(conditions);
+      }
+
+      return apply(0);
+    });
   }
 
   for (const [field, direction] of opts.fields) {
     qb = qb.orderBy(field, direction);
   }
 
-  const results = await qb.limit(opts.perPage + 1).execute();
+  const rows = await qb.limit(opts.perPage + 1).execute();
 
   return {
-    hasPrevPage: false,
-    hasNextPage: results.length > opts.perPage,
-    results: results.slice(0, opts.perPage).map((result) => {
+    hasNextPage: rows.length > opts.perPage,
+    // hasPrevPage: false,
+    rows: rows.slice(0, opts.perPage).map((row) => {
       const cursorFieldValues = opts.fields.map(([field]) => [
         field,
-        result[field],
+        row[field],
       ]);
 
       return {
-        ...result,
-        cursor: defaultEncodeCursor(cursorFieldValues),
+        ...row,
+        $cursor: defaultEncodeCursor(cursorFieldValues),
       };
     }),
   };

@@ -7,87 +7,163 @@ import {
 import { createSampleBlogPosts, db } from "./db";
 
 describe("executeWithCursorPagination", () => {
-  it("works in a trivially simple case", async () => {
+  it("handles a simple case with no cursors", async () => {
     const posts = await createSampleBlogPosts(2);
 
     const query = db.selectFrom("blogPosts").select(["id"]);
 
     const result = await executeWithCursorPagination(query, {
-      perPage: 5,
-      fields: [["id", "desc"]],
+      perPage: 2,
+      fields: [["id", "asc"]],
     });
 
     expect(result.hasNextPage).toBe(false);
-    expect(result.hasPrevPage).toBe(false);
-    expect(result.results.length).toEqual(2);
-
-    expect(result.results[0]).toEqual({
-      id: posts[1]!.id,
-      cursor: defaultEncodeCursor([["id", posts[1]!.id]]),
-    });
-
-    expect(result.results[1]).toEqual({
-      id: posts[0]!.id,
-      cursor: defaultEncodeCursor([["id", posts[0]!.id]]),
-    });
+    expect(result.rows.map((row) => row.id)).toEqual(
+      posts.map((p) => p.id).sort()
+    );
   });
 
-  it("allows fetching a subset of data", async () => {
-    await createSampleBlogPosts(5);
+  it("works correctly with a single ascending sorts", async () => {
+    await createSampleBlogPosts(10);
 
-    const query = db.selectFrom("blogPosts").select(["id"]);
+    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
 
-    const result = await executeWithCursorPagination(query, {
-      perPage: 2,
+    const fullResult = await executeWithCursorPagination(query, {
+      perPage: 10,
+      fields: [["id", "asc"]],
+    });
+
+    let cursor: string | undefined;
+
+    for (let i = 0; i < 10; i += 2) {
+      const result = await executeWithCursorPagination(query, {
+        perPage: 2,
+        after: cursor,
+        fields: [["id", "asc"]],
+      });
+
+      cursor = result.rows[1]?.$cursor;
+
+      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+    }
+  });
+
+  it("works correctly with multiple ascending sorts", async () => {
+    await createSampleBlogPosts(10);
+
+    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+
+    const fullResult = await executeWithCursorPagination(query, {
+      perPage: 10,
+      fields: [
+        ["authorId", "asc"],
+        ["id", "asc"],
+      ],
+    });
+
+    let cursor: string | undefined;
+
+    for (let i = 0; i < 10; i += 2) {
+      const result = await executeWithCursorPagination(query, {
+        perPage: 2,
+        after: cursor,
+        fields: [
+          ["authorId", "asc"],
+          ["id", "asc"],
+        ],
+      });
+
+      cursor = result.rows[1]?.$cursor;
+
+      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+    }
+  });
+
+  it("works correctly with a single descending sorts", async () => {
+    await createSampleBlogPosts(10);
+
+    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+
+    const fullResult = await executeWithCursorPagination(query, {
+      perPage: 10,
       fields: [["id", "desc"]],
     });
 
-    expect(result.hasNextPage).toBe(true);
-    expect(result.hasPrevPage).toBe(false);
-    expect(result.results.length).toEqual(2);
+    let cursor: string | undefined;
+
+    for (let i = 0; i < 10; i += 2) {
+      const result = await executeWithCursorPagination(query, {
+        perPage: 2,
+        after: cursor,
+        fields: [["id", "desc"]],
+      });
+
+      cursor = result.rows[1]?.$cursor;
+
+      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+    }
   });
 
-  it("allows fetching subsequent pages", async () => {
-    const expectedFirst = await createSampleBlogPosts(2);
-    const expectedSecond = await createSampleBlogPosts(2);
-    const expectedThird = await createSampleBlogPosts(2);
+  it("works correctly with multiple descending sorts", async () => {
+    await createSampleBlogPosts(10);
 
-    const query = db.selectFrom("blogPosts").select(["id"]);
+    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
 
-    const resultFirst = await executeWithCursorPagination(query, {
-      perPage: 2,
-      fields: [["id", "asc"]],
+    const fullResult = await executeWithCursorPagination(query, {
+      perPage: 10,
+      fields: [
+        ["authorId", "desc"],
+        ["id", "desc"],
+      ],
     });
 
-    expect(resultFirst.hasNextPage).toBe(true);
-    expect(resultFirst.hasPrevPage).toBe(false);
-    expect(resultFirst.results.map((r) => r.id)).toEqual(
-      expectedFirst.map((r) => r.id)
-    );
+    let cursor: string | undefined;
 
-    const resultSecond = await executeWithCursorPagination(query, {
-      perPage: 2,
-      after: resultFirst.results[1]?.cursor,
-      fields: [["id", "asc"]],
+    for (let i = 0; i < 10; i += 2) {
+      const result = await executeWithCursorPagination(query, {
+        perPage: 2,
+        after: cursor,
+        fields: [
+          ["authorId", "desc"],
+          ["id", "desc"],
+        ],
+      });
+
+      cursor = result.rows[1]?.$cursor;
+
+      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+    }
+  });
+
+  it("works correctly with mixed sort directions", async () => {
+    await createSampleBlogPosts(10);
+
+    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+
+    const fullResult = await executeWithCursorPagination(query, {
+      perPage: 10,
+      fields: [
+        ["authorId", "asc"],
+        ["id", "desc"],
+      ],
     });
 
-    expect(resultSecond.hasNextPage).toBe(true);
-    expect(resultSecond.hasPrevPage).toBe(false); // TODO: I guess true? or at least null
-    expect(resultSecond.results.map((r) => r.id)).toEqual(
-      expectedSecond.map((r) => r.id)
-    );
+    let cursor: string | undefined;
 
-    const resultThird = await executeWithCursorPagination(query, {
-      perPage: 2,
-      after: resultSecond.results[1]?.cursor,
-      fields: [["id", "asc"]],
-    });
+    for (let i = 0; i < 10; i += 2) {
+      const result = await executeWithCursorPagination(query, {
+        perPage: 2,
+        after: cursor,
+        fields: [
+          ["authorId", "asc"],
+          ["id", "desc"],
+        ],
+      });
 
-    expect(resultThird.hasNextPage).toBe(false);
-    expect(resultThird.hasPrevPage).toBe(false); // TODO: I guess true? or at least null
-    expect(resultThird.results.map((r) => r.id)).toEqual(
-      expectedThird.map((r) => r.id)
-    );
+      cursor = result.rows[1]?.$cursor;
+
+      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+    }
   });
 });
 
