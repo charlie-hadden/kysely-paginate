@@ -5,35 +5,61 @@ type Fields<O> = [
   direction: OrderByDirectionExpression
 ][];
 
+type FieldNames<T extends Fields<any>> = {
+  [TIndex in keyof T]: T[TIndex][0];
+};
+
 //type EncodeCursorValues<O, T extends Fields<O>> = {
 //  [TIndex in keyof T]: [T[TIndex][0], O[T[TIndex][0]]];
 //};
 
-export async function executeWithCursorPagination<O>(
+type DecodedCursor<T extends Fields<any>> = {
+  [TIndex in keyof T]: [T[TIndex][0], unknown];
+};
+
+export async function executeWithCursorPagination<
+  O,
+  const TFields extends Fields<O>
+>(
   qb: SelectQueryBuilder<any, any, O>,
   opts: {
     perPage: number;
     after?: string;
     before?: string;
-    fields: Fields<O>;
+    fields: TFields;
   }
 ) {
-  const fieldNames = opts.fields.map((field) => field[0]);
+  const fieldNames = opts.fields.map(
+    (field) => field[0]
+  ) as FieldNames<TFields>;
 
   if (opts.after) {
     const cursor = defaultDecodeCursor(opts.after, fieldNames);
 
     qb = qb.where(({ and, or, cmpr }) => {
       function apply(index: number) {
-        const [column, value] = cursor[index];
-        const direction = opts.fields[index][1];
+        const cursorColumn = cursor[index];
+        const field = opts.fields[index];
+
+        if (!cursorColumn || !field) {
+          throw new Error("Unknown cursor index");
+        }
+
+        const [column, value] = cursorColumn;
+        const direction = field[1];
 
         const conditions = [
-          cmpr(column, direction === "asc" ? ">" : "<", value),
+          cmpr(
+            column,
+            direction === "asc" ? ">" : "<",
+            value as any /* FIXME */
+          ),
         ];
 
         if (index < cursor.length - 1) {
-          conditions.push(and([cmpr(column, "=", value), apply(index + 1)]));
+          conditions.push(
+            and([cmpr(column, "=", value as any /* FIXME */), apply(index + 1)])
+          );
         }
 
         return or(conditions);
@@ -71,9 +97,11 @@ export function defaultEncodeCursor(fields: any) {
   return Buffer.from(JSON.stringify(fields), "utf8").toString("base64url");
 }
 
-// FIXME: Handle any values here
-export function defaultDecodeCursor(cursor: string, fields: any[]): any {
-  let parsed;
+export function defaultDecodeCursor<TFields extends Fields<any>>(
+  cursor: string,
+  fields: FieldNames<TFields>
+) {
+  let parsed: unknown;
 
   try {
     parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
@@ -90,7 +118,7 @@ export function defaultDecodeCursor(cursor: string, fields: any[]): any {
   }
 
   for (let i = 0; i < fields.length; i++) {
-    const field = parsed[i];
+    const field = parsed[i] as unknown;
     const expectedName = fields[i];
 
     if (!Array.isArray(field) || field.length !== 2) {
@@ -102,5 +130,5 @@ export function defaultDecodeCursor(cursor: string, fields: any[]): any {
     }
   }
 
-  return parsed;
+  return parsed as DecodedCursor<TFields>;
 }
