@@ -165,11 +165,54 @@ describe("executeWithCursorPagination", () => {
       expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
     }
   });
+
+  it("supports custom cursor encoding", async () => {
+    const [post] = await createSampleBlogPosts(1);
+
+    const query = db.selectFrom("blogPosts").select(["id", "title"]);
+
+    const result = await executeWithCursorPagination(query, {
+      perPage: 1,
+      fields: [
+        ["title", "desc"],
+        ["id", "asc"],
+      ],
+      encodeCursor: (values) =>
+        new URLSearchParams(
+          values.map(([field, value]) => [field, String(value)])
+        ).toString(),
+    });
+
+    expect(result.rows[0]?.$cursor).toEqual(`id=${String(post?.id)}`);
+  });
+
+  it("supports custom cursor decoding", async () => {
+    await createSampleBlogPosts(1);
+    let passedFields;
+
+    const query = db.selectFrom("blogPosts").select(["id"]);
+
+    await executeWithCursorPagination(query, {
+      perPage: 1,
+      after: "id=0",
+      fields: [["id", "asc"]],
+      decodeCursor: (cursor, fields) => {
+        passedFields = fields;
+
+        return [...new URLSearchParams(cursor).entries()] as [["id", "0"]];
+      },
+    });
+
+    expect(passedFields).toEqual(["id"]);
+  });
 });
 
 describe("defaultEncodeCursor", () => {
   it("returns a base64 encoded string", () => {
-    const cursor = defaultEncodeCursor([
+    const cursor = defaultEncodeCursor<
+      { id: number; name: string },
+      [["name", "desc"], ["id", "desc"]]
+    >([
       ["name", "foo"],
       ["id", 1],
     ]);
@@ -180,10 +223,10 @@ describe("defaultEncodeCursor", () => {
 
 describe("defaultDecodeCursor", () => {
   it("decodes a valid cursor", () => {
-    const decoded = defaultDecodeCursor("W1sibmFtZSIsImZvbyJdLFsiaWQiLDFdXQ", [
-      "name",
-      "id",
-    ]);
+    const decoded = defaultDecodeCursor<
+      { id: number; name: string },
+      [["name", "desc"], ["id", "desc"]]
+    >("W1sibmFtZSIsImZvbyJdLFsiaWQiLDFdXQ", ["name", "id"]);
 
     expect(decoded).toEqual([
       ["name", "foo"],
@@ -214,9 +257,9 @@ describe("defaultDecodeCursor", () => {
       "utf8"
     ).toString("base64url");
 
-    expect(() => defaultDecodeCursor(cursor, ["foo"])).toThrowError(
-      /unexpected number of fields/i
-    );
+    expect(() =>
+      defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
+    ).toThrowError(/unexpected number of fields/i);
   });
 
   it("throws an error if a field is not an array", () => {
@@ -225,9 +268,9 @@ describe("defaultDecodeCursor", () => {
       "utf8"
     ).toString("base64url");
 
-    expect(() => defaultDecodeCursor(cursor, ["foo"])).toThrowError(
-      /malformed value for field/i
-    );
+    expect(() =>
+      defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
+    ).toThrowError(/malformed value for field/i);
   });
 
   it("throws an error if a field array is the wrong length", () => {
@@ -235,18 +278,18 @@ describe("defaultDecodeCursor", () => {
       "base64url"
     );
 
-    expect(() => defaultDecodeCursor(cursor, ["foo"])).toThrowError(
-      /malformed value for field/i
-    );
+    expect(() =>
+      defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
+    ).toThrowError(/malformed value for field/i);
   });
 
   it("throws an error if a field name doesn't match", () => {
-    const cursor = Buffer.from(JSON.stringify([["foo", 1]]), "utf8").toString(
+    const cursor = Buffer.from(JSON.stringify([["bar", 1]]), "utf8").toString(
       "base64url"
     );
 
-    expect(() => defaultDecodeCursor(cursor, ["bar"])).toThrowError(
-      /unexpected field name/i
-    );
+    expect(() =>
+      defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
+    ).toThrowError(/unexpected field name/i);
   });
 });

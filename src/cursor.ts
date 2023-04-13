@@ -1,21 +1,29 @@
 import { OrderByDirectionExpression, SelectQueryBuilder } from "kysely";
 
-type Fields<O> = [
-  field: keyof O & string,
-  direction: OrderByDirectionExpression
-][];
+type Fields<O> = Readonly<
+  Readonly<[field: keyof O & string, direction: OrderByDirectionExpression]>[]
+>;
 
-type FieldNames<T extends Fields<any>> = {
+type FieldNames<O, T extends Fields<O>> = {
   [TIndex in keyof T]: T[TIndex][0];
 };
 
-//type EncodeCursorValues<O, T extends Fields<O>> = {
-//  [TIndex in keyof T]: [T[TIndex][0], O[T[TIndex][0]]];
-//};
+type EncodeCursorValues<O, T extends Fields<O>> = {
+  [TIndex in keyof T]: [T[TIndex][0], O[T[TIndex][0]]];
+};
+
+export type CursorEncoder<O, T extends Fields<O>> = (
+  values: EncodeCursorValues<O, T>
+) => string;
 
 type DecodedCursor<T extends Fields<any>> = {
   [TIndex in keyof T]: [T[TIndex][0], unknown];
 };
+
+export type CursorDecoder<O, T extends Fields<O>> = (
+  cursor: string,
+  fields: FieldNames<O, T>
+) => DecodedCursor<T>;
 
 export async function executeWithCursorPagination<
   O,
@@ -27,14 +35,21 @@ export async function executeWithCursorPagination<
     after?: string;
     before?: string;
     fields: TFields;
+    encodeCursor?: CursorEncoder<O, TFields>;
+    decodeCursor?: CursorDecoder<O, TFields>;
   }
 ) {
-  const fieldNames = opts.fields.map(
-    (field) => field[0]
-  ) as FieldNames<TFields>;
+  const encodeCursor = opts.encodeCursor ?? defaultEncodeCursor;
+  // FIXME: This seems like a hack we shouldn't need
+  const decodeCursor = opts.decodeCursor ?? defaultDecodeCursor<O, TFields>;
+
+  const fieldNames = opts.fields.map((field) => field[0]) as FieldNames<
+    O,
+    TFields
+  >;
 
   if (opts.after) {
-    const cursor = defaultDecodeCursor(opts.after, fieldNames);
+    const cursor = decodeCursor(opts.after, fieldNames);
 
     qb = qb.where(({ and, or, cmpr }) => {
       function apply(index: number) {
@@ -82,24 +97,25 @@ export async function executeWithCursorPagination<
       const cursorFieldValues = opts.fields.map(([field]) => [
         field,
         row[field],
-      ]);
+      ]) as EncodeCursorValues<O, TFields>;
 
       return {
         ...row,
-        $cursor: defaultEncodeCursor(cursorFieldValues),
+        $cursor: encodeCursor(cursorFieldValues),
       };
     }),
   };
 }
 
-// FIXME: Handle any better here
-export function defaultEncodeCursor(fields: any) {
-  return Buffer.from(JSON.stringify(fields), "utf8").toString("base64url");
+export function defaultEncodeCursor<O, T extends Fields<O>>(
+  values: EncodeCursorValues<O, T>
+) {
+  return Buffer.from(JSON.stringify(values), "utf8").toString("base64url");
 }
 
-export function defaultDecodeCursor<TFields extends Fields<any>>(
+export function defaultDecodeCursor<O, T extends Fields<O>>(
   cursor: string,
-  fields: FieldNames<TFields>
+  fields: FieldNames<O, T>
 ) {
   let parsed: unknown;
 
@@ -119,7 +135,7 @@ export function defaultDecodeCursor<TFields extends Fields<any>>(
 
   for (let i = 0; i < fields.length; i++) {
     const field = parsed[i] as unknown;
-    const expectedName = fields[i];
+    const expectedName = fields[i] as string;
 
     if (!Array.isArray(field) || field.length !== 2) {
       throw new Error("Malformed value for field");
@@ -130,5 +146,5 @@ export function defaultDecodeCursor<TFields extends Fields<any>>(
     }
   }
 
-  return parsed as DecodedCursor<TFields>;
+  return parsed as DecodedCursor<any>;
 }
