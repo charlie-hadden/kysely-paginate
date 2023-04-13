@@ -17,6 +17,8 @@ describe("executeWithCursorPagination", () => {
       fields: [["id", "asc"]],
     });
 
+    expect(result.startCursor).toBeTruthy();
+    expect(result.endCursor).toBeTruthy();
     expect(result.hasNextPage).toBe(false);
     expect(result.rows.map((row) => row.id)).toEqual(
       posts.map((p) => p.id).sort()
@@ -42,7 +44,7 @@ describe("executeWithCursorPagination", () => {
         fields: [["id", "asc"]],
       });
 
-      cursor = result.rows[1]?.$cursor;
+      cursor = result.endCursor;
 
       expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
     }
@@ -73,7 +75,7 @@ describe("executeWithCursorPagination", () => {
         ],
       });
 
-      cursor = result.rows[1]?.$cursor;
+      cursor = result.endCursor;
 
       expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
     }
@@ -98,7 +100,7 @@ describe("executeWithCursorPagination", () => {
         fields: [["id", "desc"]],
       });
 
-      cursor = result.rows[1]?.$cursor;
+      cursor = result.endCursor;
 
       expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
     }
@@ -129,7 +131,7 @@ describe("executeWithCursorPagination", () => {
         ],
       });
 
-      cursor = result.rows[1]?.$cursor;
+      cursor = result.endCursor;
 
       expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
     }
@@ -160,7 +162,7 @@ describe("executeWithCursorPagination", () => {
         ],
       });
 
-      cursor = result.rows[1]?.$cursor;
+      cursor = result.endCursor;
 
       expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
     }

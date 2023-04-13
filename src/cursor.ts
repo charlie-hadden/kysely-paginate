@@ -42,6 +42,15 @@ export async function executeWithCursorPagination<
   const encodeCursor = opts.encodeCursor ?? defaultEncodeCursor;
   const decodeCursor = opts.decodeCursor ?? defaultDecodeCursor;
 
+  function generateCursor(row: O): string {
+    const cursorFieldValues = opts.fields.map(([field]) => [
+      field,
+      row[field],
+    ]) as EncodeCursorValues<O, TFields>;
+
+    return encodeCursor(cursorFieldValues);
+  }
+
   const fieldNames = opts.fields.map((field) => field[0]) as FieldNames<
     O,
     TFields
@@ -96,19 +105,23 @@ export async function executeWithCursorPagination<
   }
 
   const rows = await qb.limit(opts.perPage + 1).execute();
+  const slicedRows = rows.slice(0, opts.perPage);
+
+  const startRow = slicedRows[0];
+  const endRow = slicedRows[slicedRows.length - 1];
+
+  const startCursor = startRow ? generateCursor(startRow) : undefined;
+  const endCursor = endRow ? generateCursor(endRow) : undefined;
 
   return {
+    startCursor,
+    endCursor,
     hasNextPage: rows.length > opts.perPage,
     // hasPrevPage: false,
-    rows: rows.slice(0, opts.perPage).map((row) => {
-      const cursorFieldValues = opts.fields.map(([field]) => [
-        field,
-        row[field],
-      ]) as EncodeCursorValues<O, TFields>;
-
+    rows: slicedRows.map((row) => {
       return {
         ...row,
-        $cursor: encodeCursor(cursorFieldValues),
+        $cursor: generateCursor(row),
       };
     }),
   };
