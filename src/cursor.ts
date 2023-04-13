@@ -17,7 +17,7 @@ export type CursorEncoder<O, T extends Fields<O>> = (
 ) => string;
 
 type DecodedCursor<T extends Fields<any>> = {
-  [TIndex in keyof T]: [T[TIndex][0], unknown];
+  [TField in T[number][0]]: string;
 };
 
 export type CursorDecoder<O, T extends Fields<O>> = (
@@ -40,8 +40,7 @@ export async function executeWithCursorPagination<
   }
 ) {
   const encodeCursor = opts.encodeCursor ?? defaultEncodeCursor;
-  // FIXME: This seems like a hack we shouldn't need
-  const decodeCursor = opts.decodeCursor ?? defaultDecodeCursor<O, TFields>;
+  const decodeCursor = opts.decodeCursor ?? defaultDecodeCursor;
 
   const fieldNames = opts.fields.map((field) => field[0]) as FieldNames<
     O,
@@ -53,27 +52,35 @@ export async function executeWithCursorPagination<
 
     qb = qb.where(({ and, or, cmpr }) => {
       function apply(index: number) {
-        const cursorColumn = cursor[index];
         const field = opts.fields[index];
 
-        if (!cursorColumn || !field) {
+        if (!field) {
           throw new Error("Unknown cursor index");
         }
 
-        const [column, value] = cursorColumn;
-        const direction = field[1];
+        const [column, direction] = field;
+        const value = cursor[column];
 
         const conditions = [
           cmpr(
             column,
             direction === "asc" ? ">" : "<",
-            value as any /* FIXME */
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            value as any
           ),
         ];
 
-        if (index < cursor.length - 1) {
+        if (index < opts.fields.length - 1) {
           conditions.push(
-            and([cmpr(column, "=", value as any /* FIXME */), apply(index + 1)])
+            and([
+              cmpr(
+                column,
+                "=",
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                value as any
+              ),
+              apply(index + 1),
+            ])
           );
         }
 
@@ -110,23 +117,41 @@ export async function executeWithCursorPagination<
 export function defaultEncodeCursor<O, T extends Fields<O>>(
   values: EncodeCursorValues<O, T>
 ) {
-  return Buffer.from(JSON.stringify(values), "utf8").toString("base64url");
+  const cursor = new URLSearchParams();
+
+  for (const [column, value] of values) {
+    switch (typeof value) {
+      case "string":
+        cursor.set(column, value);
+        break;
+
+      case "number":
+        cursor.set(column, String(value));
+        break;
+
+      default:
+        // FIXME
+        throw new Error("Cursor value type not yet handled");
+    }
+  }
+
+  return Buffer.from(cursor.toString(), "utf8").toString("base64url");
 }
 
 export function defaultDecodeCursor<O, T extends Fields<O>>(
   cursor: string,
   fields: FieldNames<O, T>
-) {
-  let parsed: unknown;
+): DecodedCursor<T> {
+  let parsed;
 
   try {
-    parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    parsed = [
+      ...new URLSearchParams(
+        Buffer.from(cursor, "base64url").toString("utf8")
+      ).entries(),
+    ];
   } catch {
     throw new Error("Unparsable cursor");
-  }
-
-  if (!Array.isArray(parsed)) {
-    throw new Error("Not an array");
   }
 
   if (parsed.length !== fields.length) {
@@ -134,11 +159,11 @@ export function defaultDecodeCursor<O, T extends Fields<O>>(
   }
 
   for (let i = 0; i < fields.length; i++) {
-    const field = parsed[i] as unknown;
-    const expectedName = fields[i] as string;
+    const field = parsed[i];
+    const expectedName = fields[i];
 
-    if (!Array.isArray(field) || field.length !== 2) {
-      throw new Error("Malformed value for field");
+    if (!field) {
+      throw new Error("Unable to find field");
     }
 
     if (field[0] !== expectedName) {
@@ -146,5 +171,5 @@ export function defaultDecodeCursor<O, T extends Fields<O>>(
     }
   }
 
-  return parsed as DecodedCursor<any>;
+  return Object.fromEntries(parsed) as DecodedCursor<T>;
 }

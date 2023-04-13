@@ -169,14 +169,11 @@ describe("executeWithCursorPagination", () => {
   it("supports custom cursor encoding", async () => {
     const [post] = await createSampleBlogPosts(1);
 
-    const query = db.selectFrom("blogPosts").select(["id", "title"]);
+    const query = db.selectFrom("blogPosts").select(["id"]);
 
     const result = await executeWithCursorPagination(query, {
       perPage: 1,
-      fields: [
-        ["title", "desc"],
-        ["id", "asc"],
-      ],
+      fields: [["id", "asc"]],
       encodeCursor: (values) =>
         new URLSearchParams(
           values.map(([field, value]) => [field, String(value)])
@@ -188,7 +185,7 @@ describe("executeWithCursorPagination", () => {
 
   it("supports custom cursor decoding", async () => {
     await createSampleBlogPosts(1);
-    let passedFields;
+    let passedCursor, passedFields;
 
     const query = db.selectFrom("blogPosts").select(["id"]);
 
@@ -197,12 +194,14 @@ describe("executeWithCursorPagination", () => {
       after: "id=0",
       fields: [["id", "asc"]],
       decodeCursor: (cursor, fields) => {
+        passedCursor = cursor;
         passedFields = fields;
 
-        return [...new URLSearchParams(cursor).entries()] as [["id", "0"]];
+        return { id: "0" };
       },
     });
 
+    expect(passedCursor).toEqual("id=0");
     expect(passedFields).toEqual(["id"]);
   });
 });
@@ -217,7 +216,7 @@ describe("defaultEncodeCursor", () => {
       ["id", 1],
     ]);
 
-    expect(cursor).toEqual("W1sibmFtZSIsImZvbyJdLFsiaWQiLDFdXQ");
+    expect(cursor).toEqual("bmFtZT1mb28maWQ9MQ");
   });
 });
 
@@ -226,61 +225,20 @@ describe("defaultDecodeCursor", () => {
     const decoded = defaultDecodeCursor<
       { id: number; name: string },
       [["name", "desc"], ["id", "desc"]]
-    >("W1sibmFtZSIsImZvbyJdLFsiaWQiLDFdXQ", ["name", "id"]);
+    >("bmFtZT1mb28maWQ9MQ", ["name", "id"]);
 
-    expect(decoded).toEqual([
-      ["name", "foo"],
-      ["id", 1],
-    ]);
-  });
-
-  it("throws an error on an unparsable cursor", () => {
-    expect(() =>
-      defaultDecodeCursor("completely wrong cursor", [])
-    ).toThrowError(/unparsable/i);
-  });
-
-  it("throws an error if the cursor is not an array", () => {
-    const cursor = Buffer.from(JSON.stringify({ foo: "foo" }), "utf8").toString(
-      "base64url"
-    );
-
-    expect(() => defaultDecodeCursor(cursor, [])).toThrowError(/not an array/i);
+    expect(decoded).toEqual({
+      name: "foo",
+      id: "1",
+    });
   });
 
   it("throws an error if the cursor contains the wrong number of fields", () => {
-    const cursor = Buffer.from(
-      JSON.stringify([
-        ["foo", 1],
-        ["bar", 2],
-      ]),
-      "utf8"
-    ).toString("base64url");
+    const cursor = Buffer.from("foo=1&bar=2", "utf8").toString("base64url");
 
     expect(() =>
       defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
     ).toThrowError(/unexpected number of fields/i);
-  });
-
-  it("throws an error if a field is not an array", () => {
-    const cursor = Buffer.from(
-      JSON.stringify([{ foo: "foo" }]),
-      "utf8"
-    ).toString("base64url");
-
-    expect(() =>
-      defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
-    ).toThrowError(/malformed value for field/i);
-  });
-
-  it("throws an error if a field array is the wrong length", () => {
-    const cursor = Buffer.from(JSON.stringify([["foo"]]), "utf8").toString(
-      "base64url"
-    );
-
-    expect(() =>
-      defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
-    ).toThrowError(/malformed value for field/i);
   });
 
   it("throws an error if a field name doesn't match", () => {
