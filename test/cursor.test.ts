@@ -206,6 +206,27 @@ describe("executeWithCursorPagination", () => {
     expect(passedCursor).toEqual("id=0");
     expect(passedFields).toEqual(["id"]);
   });
+
+  it("supports parsing the cursor", async () => {
+    await createSampleBlogPosts(1);
+    let decodedCursor;
+
+    const query = db.selectFrom("blogPosts").select(["id"]);
+
+    await executeWithCursorPagination(query, {
+      perPage: 1,
+      after: "id=0",
+      fields: [["id", "asc"]],
+      decodeCursor: () => ({ id: "0" }),
+      parseCursor: (cursor) => {
+        decodedCursor = cursor;
+
+        return { id: parseInt(cursor.id, 10) };
+      },
+    });
+
+    expect(decodedCursor).toEqual({ id: "0" });
+  });
 });
 
 describe("defaultEncodeCursor", () => {
