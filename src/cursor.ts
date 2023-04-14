@@ -33,21 +33,46 @@ export type CursorParser<O, T extends Fields<O>> = (
   cursor: DecodedCursor<T>
 ) => ParsedCursorValues<O, T>;
 
+type CursorPaginationResultRow<
+  TRow,
+  TCursorKey extends string | boolean | undefined
+> = TRow & {
+  [K in TCursorKey extends undefined
+    ? never
+    : TCursorKey extends false
+    ? never
+    : TCursorKey extends true
+    ? "$cursor"
+    : TCursorKey]: string;
+};
+
+export type CursorPaginationResult<
+  TRow,
+  TCursorKey extends string | boolean | undefined
+> = {
+  startCursor: string | undefined;
+  endCursor: string | undefined;
+  hasNextPage: boolean;
+  rows: CursorPaginationResultRow<TRow, TCursorKey>[];
+};
+
 export async function executeWithCursorPagination<
   O,
-  const TFields extends Fields<O>
+  const TFields extends Fields<O>,
+  TCursorKey extends string | boolean | undefined = undefined
 >(
   qb: SelectQueryBuilder<any, any, O>,
   opts: {
     perPage: number;
     after?: string;
     before?: string;
+    cursorPerRow?: TCursorKey;
     fields: TFields;
     encodeCursor?: CursorEncoder<O, TFields>;
     decodeCursor?: CursorDecoder<O, TFields>;
     parseCursor?: CursorParser<O, TFields>;
   }
-) {
+): Promise<CursorPaginationResult<O, TCursorKey>> {
   const encodeCursor = opts.encodeCursor ?? defaultEncodeCursor;
   const decodeCursor = opts.decodeCursor ?? defaultDecodeCursor;
 
@@ -129,10 +154,15 @@ export async function executeWithCursorPagination<
     hasNextPage: rows.length > opts.perPage,
     // hasPrevPage: false,
     rows: slicedRows.map((row) => {
-      return {
-        ...row,
-        $cursor: generateCursor(row),
-      };
+      if (opts.cursorPerRow) {
+        const cursorKey =
+          typeof opts.cursorPerRow === "string" ? opts.cursorPerRow : "$cursor";
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        (row as any)[cursorKey] = generateCursor(row);
+      }
+
+      return row as CursorPaginationResultRow<O, TCursorKey>;
     }),
   };
 }

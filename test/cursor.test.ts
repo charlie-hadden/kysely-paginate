@@ -33,6 +33,34 @@ databases.forEach(([kind, db]) => {
         );
       });
 
+      it("supports returning a cursor for each row", async () => {
+        await createSampleBlogPosts(db, 1);
+
+        const query = db.selectFrom("blogPosts").select(["id"]);
+
+        const result = await executeWithCursorPagination(query, {
+          perPage: 2,
+          cursorPerRow: true,
+          fields: [["id", "asc"]],
+        });
+
+        expect(result.rows[0]?.$cursor).toEqual(result.endCursor);
+      });
+
+      it("supports returning a cursor for each row with a custom key", async () => {
+        await createSampleBlogPosts(db, 1);
+
+        const query = db.selectFrom("blogPosts").select(["id"]);
+
+        const result = await executeWithCursorPagination(query, {
+          perPage: 2,
+          cursorPerRow: "foobar",
+          fields: [["id", "asc"]],
+        });
+
+        expect(result.rows[0]?.foobar).toEqual(result.endCursor);
+      });
+
       it("works correctly with a single ascending sorts", async () => {
         await createSampleBlogPosts(db, 10);
 
@@ -190,7 +218,7 @@ databases.forEach(([kind, db]) => {
             ).toString(),
         });
 
-        expect(result.rows[0]?.$cursor).toEqual(`id=${String(post?.id)}`);
+        expect(result.endCursor).toEqual(`id=${String(post?.id)}`);
       });
 
       it("supports custom cursor decoding", async () => {
