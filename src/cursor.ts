@@ -25,6 +25,14 @@ export type CursorDecoder<O, T extends Fields<O>> = (
   fields: FieldNames<O, T>
 ) => DecodedCursor<T>;
 
+type ParsedCursorValues<O, T extends Fields<O>> = {
+  [TField in T[number][0]]: O[TField];
+};
+
+export type CursorParser<O, T extends Fields<O>> = (
+  cursor: DecodedCursor<T>
+) => ParsedCursorValues<O, T>;
+
 export async function executeWithCursorPagination<
   O,
   const TFields extends Fields<O>
@@ -37,6 +45,7 @@ export async function executeWithCursorPagination<
     fields: TFields;
     encodeCursor?: CursorEncoder<O, TFields>;
     decodeCursor?: CursorDecoder<O, TFields>;
+    parseCursor?: CursorParser<O, TFields>;
   }
 ) {
   const encodeCursor = opts.encodeCursor ?? defaultEncodeCursor;
@@ -57,7 +66,8 @@ export async function executeWithCursorPagination<
   >;
 
   if (opts.after) {
-    const cursor = decodeCursor(opts.after, fieldNames);
+    const decoded = decodeCursor(opts.after, fieldNames);
+    const cursor = opts.parseCursor ? opts.parseCursor(decoded) : decoded;
 
     qb = qb.where(({ and, or, cmpr }) => {
       function apply(index: number) {
