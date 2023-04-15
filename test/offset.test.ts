@@ -76,4 +76,32 @@ describe("executeWithOffsetPagination", () => {
       });
     });
   });
+
+  it("returns the same result regardless of using a deferred join", async () => {
+    await createSampleBlogPosts(100);
+
+    const query = db.selectFrom("blogPosts").selectAll().orderBy("id", "asc");
+
+    let page = 1,
+      hasNextPage: boolean | undefined = true;
+
+    while (hasNextPage) {
+      const withoutDeferredJoin = await executeWithOffsetPagination(query, {
+        perPage: 5,
+        page,
+        useDeferredJoin: false,
+      });
+
+      const withDeferredJoin = await executeWithOffsetPagination(query, {
+        perPage: 5,
+        page,
+        useDeferredJoin: true,
+      });
+
+      expect(withDeferredJoin).toEqual(withoutDeferredJoin);
+
+      page++;
+      hasNextPage = withoutDeferredJoin.hasNextPage;
+    }
+  });
 });
