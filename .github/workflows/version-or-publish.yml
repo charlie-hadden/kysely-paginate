@@ -12,8 +12,13 @@ permissions:
   issues: read
 
 jobs:
-  changesets:
+  build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
     steps:
       - uses: actions/checkout@v3
       - uses: pnpm/action-setup@v2
@@ -21,13 +26,28 @@ jobs:
           version: 8
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: ${{ matrix.node-version }}
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm run type-check
       - run: pnpm run lint
       - run: pnpm run test
+
+  changesets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
 
       - name: Create release pull request or publish
         id: changesets
