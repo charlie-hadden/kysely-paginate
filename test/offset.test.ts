@@ -13,7 +13,7 @@ describe("executeWithOffsetPagination", () => {
 
         const query = db
           .selectFrom("blogPosts")
-          .select(["id"])
+          .selectAll()
           .orderBy("id", "asc");
 
         const result = await executeWithOffsetPagination(query, {
@@ -37,7 +37,7 @@ describe("executeWithOffsetPagination", () => {
 
         const query = db
           .selectFrom("blogPosts")
-          .select(["id"])
+          .selectAll()
           .orderBy("id", "asc");
 
         const result = await executeWithOffsetPagination(query, {
@@ -61,7 +61,7 @@ describe("executeWithOffsetPagination", () => {
 
         const query = db
           .selectFrom("blogPosts")
-          .select(["id"])
+          .selectAll()
           .orderBy("id", "asc");
 
         const result = await executeWithOffsetPagination(query, {
