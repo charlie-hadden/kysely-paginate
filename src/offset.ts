@@ -1,4 +1,4 @@
-import { ColumnNode, SelectQueryBuilder, TableNode } from "kysely";
+import { ColumnNode, SelectQueryBuilder, TableNode, sql } from "kysely";
 
 export type OffsetPaginationResult<O> = {
   hasNextPage: boolean | undefined;
@@ -21,10 +21,17 @@ export async function executeWithOffsetPagination<O>(
 
   if (opts.useDeferredJoin ?? true) {
     const subquery = qb.clearSelect().select(primaryKey);
+    const ids = await subquery
+      .execute()
+      .then((rows) => rows.map((row) => row[primaryKey]));
 
     qb = qb
       .clearWhere() // TODO: Need to check this is actually what we want
-      .where((eb) => eb.cmpr(primaryKey, "in", subquery))
+      .where((eb) =>
+        ids.length > 0
+          ? eb.cmpr(primaryKey, "in", ids)
+          : eb.cmpr(sql`1`, "=", 0)
+      )
       .clearOffset()
       .clearLimit();
   }

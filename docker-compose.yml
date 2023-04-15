@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  mysql:
+    image: mariadb
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "true"
+      MYSQL_DATABASE: kysely_paginate
+      MYSQL_USER: kysely_paginate
+      MYSQL_PASSWORD: kysely_paginate
+    ports:
+      - "3308:3306"
+
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: kysely_paginate
+      POSTGRES_USER: kysely_paginate
+      POSTGRES_PASSWORD: kysely_paginate
+    ports:
+      - "5434:5432"

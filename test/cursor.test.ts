@@ -1,231 +1,241 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   defaultDecodeCursor,
   defaultEncodeCursor,
   executeWithCursorPagination,
 } from "../src";
-import { createSampleBlogPosts, db } from "./db";
+import { createSampleBlogPosts, databases, setupDatabase } from "./db";
 
-describe("executeWithCursorPagination", () => {
-  it("handles a simple case with no cursors", async () => {
-    const posts = await createSampleBlogPosts(2);
+databases.forEach(([kind, db]) => {
+  describe(kind, () => {
+    beforeAll(async () => await setupDatabase(db));
 
-    const query = db.selectFrom("blogPosts").select(["id"]);
-
-    const result = await executeWithCursorPagination(query, {
-      perPage: 2,
-      fields: [["id", "asc"]],
+    beforeEach(async () => {
+      await db.deleteFrom("blogPosts").execute();
     });
 
-    expect(result.startCursor).toBeTruthy();
-    expect(result.endCursor).toBeTruthy();
-    expect(result.hasNextPage).toBe(false);
-    expect(result.rows.map((row) => row.id)).toEqual(
-      posts.map((p) => p.id).sort((a, b) => a - b)
-    );
-  });
+    describe("executeWithCursorPagination", () => {
+      it("handles a simple case with no cursors", async () => {
+        const posts = await createSampleBlogPosts(db, 2);
 
-  it("works correctly with a single ascending sorts", async () => {
-    await createSampleBlogPosts(10);
+        const query = db.selectFrom("blogPosts").select(["id"]);
 
-    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+        const result = await executeWithCursorPagination(query, {
+          perPage: 2,
+          fields: [["id", "asc"]],
+        });
 
-    const fullResult = await executeWithCursorPagination(query, {
-      perPage: 10,
-      fields: [["id", "asc"]],
-    });
-
-    let cursor: string | undefined;
-
-    for (let i = 0; i < 10; i += 2) {
-      const result = await executeWithCursorPagination(query, {
-        perPage: 2,
-        after: cursor,
-        fields: [["id", "asc"]],
+        expect(result.startCursor).toBeTruthy();
+        expect(result.endCursor).toBeTruthy();
+        expect(result.hasNextPage).toBe(false);
+        expect(result.rows.map((row) => row.id)).toEqual(
+          posts.map((p) => p.id).sort((a, b) => a - b)
+        );
       });
 
-      cursor = result.endCursor;
+      it("works correctly with a single ascending sorts", async () => {
+        await createSampleBlogPosts(db, 10);
 
-      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
-    }
-  });
+        const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
 
-  it("works correctly with multiple ascending sorts", async () => {
-    await createSampleBlogPosts(10);
+        const fullResult = await executeWithCursorPagination(query, {
+          perPage: 10,
+          fields: [["id", "asc"]],
+        });
 
-    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+        let cursor: string | undefined;
 
-    const fullResult = await executeWithCursorPagination(query, {
-      perPage: 10,
-      fields: [
-        ["authorId", "asc"],
-        ["id", "asc"],
-      ],
-    });
+        for (let i = 0; i < 10; i += 2) {
+          const result = await executeWithCursorPagination(query, {
+            perPage: 2,
+            after: cursor,
+            fields: [["id", "asc"]],
+          });
 
-    let cursor: string | undefined;
+          cursor = result.endCursor;
 
-    for (let i = 0; i < 10; i += 2) {
-      const result = await executeWithCursorPagination(query, {
-        perPage: 2,
-        after: cursor,
-        fields: [
-          ["authorId", "asc"],
-          ["id", "asc"],
-        ],
+          expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+        }
       });
 
-      cursor = result.endCursor;
+      it("works correctly with multiple ascending sorts", async () => {
+        await createSampleBlogPosts(db, 10);
 
-      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
-    }
-  });
+        const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
 
-  it("works correctly with a single descending sorts", async () => {
-    await createSampleBlogPosts(10);
+        const fullResult = await executeWithCursorPagination(query, {
+          perPage: 10,
+          fields: [
+            ["authorId", "asc"],
+            ["id", "asc"],
+          ],
+        });
 
-    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+        let cursor: string | undefined;
 
-    const fullResult = await executeWithCursorPagination(query, {
-      perPage: 10,
-      fields: [["id", "desc"]],
-    });
+        for (let i = 0; i < 10; i += 2) {
+          const result = await executeWithCursorPagination(query, {
+            perPage: 2,
+            after: cursor,
+            fields: [
+              ["authorId", "asc"],
+              ["id", "asc"],
+            ],
+          });
 
-    let cursor: string | undefined;
+          cursor = result.endCursor;
 
-    for (let i = 0; i < 10; i += 2) {
-      const result = await executeWithCursorPagination(query, {
-        perPage: 2,
-        after: cursor,
-        fields: [["id", "desc"]],
+          expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+        }
       });
 
-      cursor = result.endCursor;
+      it("works correctly with a single descending sorts", async () => {
+        await createSampleBlogPosts(db, 10);
 
-      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
-    }
-  });
+        const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
 
-  it("works correctly with multiple descending sorts", async () => {
-    await createSampleBlogPosts(10);
+        const fullResult = await executeWithCursorPagination(query, {
+          perPage: 10,
+          fields: [["id", "desc"]],
+        });
 
-    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+        let cursor: string | undefined;
 
-    const fullResult = await executeWithCursorPagination(query, {
-      perPage: 10,
-      fields: [
-        ["authorId", "desc"],
-        ["id", "desc"],
-      ],
-    });
+        for (let i = 0; i < 10; i += 2) {
+          const result = await executeWithCursorPagination(query, {
+            perPage: 2,
+            after: cursor,
+            fields: [["id", "desc"]],
+          });
 
-    let cursor: string | undefined;
+          cursor = result.endCursor;
 
-    for (let i = 0; i < 10; i += 2) {
-      const result = await executeWithCursorPagination(query, {
-        perPage: 2,
-        after: cursor,
-        fields: [
-          ["authorId", "desc"],
-          ["id", "desc"],
-        ],
+          expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+        }
       });
 
-      cursor = result.endCursor;
+      it("works correctly with multiple descending sorts", async () => {
+        await createSampleBlogPosts(db, 10);
 
-      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
-    }
-  });
+        const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
 
-  it("works correctly with mixed sort directions", async () => {
-    await createSampleBlogPosts(10);
+        const fullResult = await executeWithCursorPagination(query, {
+          perPage: 10,
+          fields: [
+            ["authorId", "desc"],
+            ["id", "desc"],
+          ],
+        });
 
-    const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+        let cursor: string | undefined;
 
-    const fullResult = await executeWithCursorPagination(query, {
-      perPage: 10,
-      fields: [
-        ["authorId", "asc"],
-        ["id", "desc"],
-      ],
-    });
+        for (let i = 0; i < 10; i += 2) {
+          const result = await executeWithCursorPagination(query, {
+            perPage: 2,
+            after: cursor,
+            fields: [
+              ["authorId", "desc"],
+              ["id", "desc"],
+            ],
+          });
 
-    let cursor: string | undefined;
+          cursor = result.endCursor;
 
-    for (let i = 0; i < 10; i += 2) {
-      const result = await executeWithCursorPagination(query, {
-        perPage: 2,
-        after: cursor,
-        fields: [
-          ["authorId", "asc"],
-          ["id", "desc"],
-        ],
+          expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+        }
       });
 
-      cursor = result.endCursor;
+      it("works correctly with mixed sort directions", async () => {
+        await createSampleBlogPosts(db, 10);
 
-      expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
-    }
-  });
+        const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
 
-  it("supports custom cursor encoding", async () => {
-    const [post] = await createSampleBlogPosts(1);
+        const fullResult = await executeWithCursorPagination(query, {
+          perPage: 10,
+          fields: [
+            ["authorId", "asc"],
+            ["id", "desc"],
+          ],
+        });
 
-    const query = db.selectFrom("blogPosts").select(["id"]);
+        let cursor: string | undefined;
 
-    const result = await executeWithCursorPagination(query, {
-      perPage: 1,
-      fields: [["id", "asc"]],
-      encodeCursor: (values) =>
-        new URLSearchParams(
-          values.map(([field, value]) => [field, String(value)])
-        ).toString(),
+        for (let i = 0; i < 10; i += 2) {
+          const result = await executeWithCursorPagination(query, {
+            perPage: 2,
+            after: cursor,
+            fields: [
+              ["authorId", "asc"],
+              ["id", "desc"],
+            ],
+          });
+
+          cursor = result.endCursor;
+
+          expect(result.rows).toEqual(fullResult.rows.slice(i, i + 2));
+        }
+      });
+
+      it("supports custom cursor encoding", async () => {
+        const [post] = await createSampleBlogPosts(db, 1);
+
+        const query = db.selectFrom("blogPosts").select(["id"]);
+
+        const result = await executeWithCursorPagination(query, {
+          perPage: 1,
+          fields: [["id", "asc"]],
+          encodeCursor: (values) =>
+            new URLSearchParams(
+              values.map(([field, value]) => [field, String(value)])
+            ).toString(),
+        });
+
+        expect(result.rows[0]?.$cursor).toEqual(`id=${String(post?.id)}`);
+      });
+
+      it("supports custom cursor decoding", async () => {
+        await createSampleBlogPosts(db, 1);
+        let passedCursor, passedFields;
+
+        const query = db.selectFrom("blogPosts").select(["id"]);
+
+        await executeWithCursorPagination(query, {
+          perPage: 1,
+          after: "id=0",
+          fields: [["id", "asc"]],
+          decodeCursor: (cursor, fields) => {
+            passedCursor = cursor;
+            passedFields = fields;
+
+            return { id: "0" };
+          },
+        });
+
+        expect(passedCursor).toEqual("id=0");
+        expect(passedFields).toEqual(["id"]);
+      });
+
+      it("supports parsing the cursor", async () => {
+        await createSampleBlogPosts(db, 1);
+        let decodedCursor;
+
+        const query = db.selectFrom("blogPosts").select(["id"]);
+
+        await executeWithCursorPagination(query, {
+          perPage: 1,
+          after: "id=0",
+          fields: [["id", "asc"]],
+          decodeCursor: () => ({ id: "0" }),
+          parseCursor: (cursor) => {
+            decodedCursor = cursor;
+
+            return { id: parseInt(cursor.id, 10) };
+          },
+        });
+
+        expect(decodedCursor).toEqual({ id: "0" });
+      });
     });
-
-    expect(result.rows[0]?.$cursor).toEqual(`id=${String(post?.id)}`);
-  });
-
-  it("supports custom cursor decoding", async () => {
-    await createSampleBlogPosts(1);
-    let passedCursor, passedFields;
-
-    const query = db.selectFrom("blogPosts").select(["id"]);
-
-    await executeWithCursorPagination(query, {
-      perPage: 1,
-      after: "id=0",
-      fields: [["id", "asc"]],
-      decodeCursor: (cursor, fields) => {
-        passedCursor = cursor;
-        passedFields = fields;
-
-        return { id: "0" };
-      },
-    });
-
-    expect(passedCursor).toEqual("id=0");
-    expect(passedFields).toEqual(["id"]);
-  });
-
-  it("supports parsing the cursor", async () => {
-    await createSampleBlogPosts(1);
-    let decodedCursor;
-
-    const query = db.selectFrom("blogPosts").select(["id"]);
-
-    await executeWithCursorPagination(query, {
-      perPage: 1,
-      after: "id=0",
-      fields: [["id", "asc"]],
-      decodeCursor: () => ({ id: "0" }),
-      parseCursor: (cursor) => {
-        decodedCursor = cursor;
-
-        return { id: parseInt(cursor.id, 10) };
-      },
-    });
-
-    expect(decodedCursor).toEqual({ id: "0" });
   });
 });
 
