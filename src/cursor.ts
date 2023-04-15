@@ -140,10 +140,16 @@ export async function executeWithCursorPagination<
   }
 
   const rows = await qb.limit(opts.perPage + 1).execute();
-  const slicedRows = rows.slice(0, opts.perPage);
+  const hasNextPage = rows.length > opts.perPage;
 
-  const startRow = slicedRows[0];
-  const endRow = slicedRows[slicedRows.length - 1];
+  // If we fetched an extra row to determine if we have a next page, that
+  // shouldn't be in the returned results
+  if (rows.length > opts.perPage) {
+    rows.pop();
+  }
+
+  const startRow = rows[0];
+  const endRow = rows[rows.length - 1];
 
   const startCursor = startRow ? generateCursor(startRow) : undefined;
   const endCursor = endRow ? generateCursor(endRow) : undefined;
@@ -151,9 +157,9 @@ export async function executeWithCursorPagination<
   return {
     startCursor,
     endCursor,
-    hasNextPage: rows.length > opts.perPage,
+    hasNextPage,
     // hasPrevPage: false,
-    rows: slicedRows.map((row) => {
+    rows: rows.map((row) => {
       if (opts.cursorPerRow) {
         const cursorKey =
           typeof opts.cursorPerRow === "string" ? opts.cursorPerRow : "$cursor";
