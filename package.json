@@ -9,7 +9,7 @@
   "author": "Charlie Hadden <charlie@hadden.me>",
   "license": "MIT",
   "engines": {
-    "node": ">= 14.0.0"
+    "node": ">= 16.14.0"
   },
   "main": "dist/index.js",
   "module": "dist/index.mjs",

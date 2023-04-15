@@ -12,12 +12,12 @@ permissions:
   issues: read
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x, 18.x]
+        node-version: [16.x, 18.x]
 
     steps:
       - uses: actions/checkout@v3
@@ -35,6 +35,7 @@ jobs:
       - run: pnpm run test
 
   changesets:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
