@@ -1,4 +1,4 @@
-import { ColumnNode, SelectQueryBuilder, TableNode, sql } from "kysely";
+import { SelectQueryBuilder, sql } from "kysely";
 
 export type OffsetPaginationResult<O> = {
   hasNextPage: boolean | undefined;
@@ -11,7 +11,7 @@ export async function executeWithOffsetPagination<O>(
   opts: {
     perPage: number;
     page: number;
-    useDeferredJoin?: boolean;
+    experimental_useDeferredJoin?: boolean;
   }
 ): Promise<OffsetPaginationResult<O>> {
   // TODO: This should be configurable
@@ -19,14 +19,16 @@ export async function executeWithOffsetPagination<O>(
 
   qb = qb.limit(opts.perPage + 1).offset((opts.page - 1) * opts.perPage);
 
-  if (opts.useDeferredJoin ?? true) {
-    const subquery = qb.clearSelect().select(primaryKey);
-    const ids = await subquery
+  if (opts.experimental_useDeferredJoin) {
+    const ids = await qb
+      .clearSelect()
+      .select(primaryKey)
       .execute()
-      .then((rows) => rows.map((row) => row[primaryKey]));
+      // FIXME: This cast won't be needed once `primaryKey` is configurable and
+      // typed properly
+      .then((rows) => rows.map((row) => row[primaryKey] as number));
 
     qb = qb
-      .clearWhere() // TODO: Need to check this is actually what we want
       .where((eb) =>
         ids.length > 0
           ? eb.cmpr(primaryKey, "in", ids)

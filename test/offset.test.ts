@@ -27,7 +27,7 @@ databases.forEach(([kind, db]) => {
             const result = await executeWithOffsetPagination(query, {
               perPage: 2,
               page: 1,
-              useDeferredJoin,
+              experimental_useDeferredJoin: useDeferredJoin,
             });
 
             expect(result.hasNextPage).toBe(true);
@@ -51,7 +51,7 @@ databases.forEach(([kind, db]) => {
             const result = await executeWithOffsetPagination(query, {
               perPage: 2,
               page: 2,
-              useDeferredJoin,
+              experimental_useDeferredJoin: useDeferredJoin,
             });
 
             expect(result.hasNextPage).toBe(false);
@@ -75,7 +75,7 @@ databases.forEach(([kind, db]) => {
             const result = await executeWithOffsetPagination(query, {
               perPage: 2,
               page: 20,
-              useDeferredJoin,
+              experimental_useDeferredJoin: useDeferredJoin,
             });
 
             expect(result.hasNextPage).toBeUndefined();
@@ -100,13 +100,13 @@ databases.forEach(([kind, db]) => {
           const withoutDeferredJoin = await executeWithOffsetPagination(query, {
             perPage: 5,
             page,
-            useDeferredJoin: false,
+            experimental_useDeferredJoin: false,
           });
 
           const withDeferredJoin = await executeWithOffsetPagination(query, {
             perPage: 5,
             page,
-            useDeferredJoin: true,
+            experimental_useDeferredJoin: true,
           });
 
           expect(withDeferredJoin).toEqual(withoutDeferredJoin);

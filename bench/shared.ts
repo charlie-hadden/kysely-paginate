@@ -74,7 +74,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         await executeWithOffsetPagination(query.orderBy("id", "asc"), {
           perPage,
           page: 1,
-          useDeferredJoin,
+          experimental_useDeferredJoin: useDeferredJoin,
         });
       });
     });
@@ -97,7 +97,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         await executeWithOffsetPagination(query.orderBy("id", "asc"), {
           perPage,
           page: middlePageNumber,
-          useDeferredJoin,
+          experimental_useDeferredJoin: useDeferredJoin,
         });
       });
     });
@@ -120,7 +120,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         await executeWithOffsetPagination(query.orderBy("id", "asc"), {
           perPage,
           page: lastPageNumber,
-          useDeferredJoin,
+          experimental_useDeferredJoin: useDeferredJoin,
         });
       });
     });
