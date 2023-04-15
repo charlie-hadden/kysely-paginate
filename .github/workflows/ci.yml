@@ -19,9 +19,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "pnpm"
 
+      - run: docker compose up -d
       - run: pnpm install --frozen-lockfile
       - run: pnpm run type-check
       - run: pnpm run lint
-      - run: docker compose up -d
       - run: pnpm run test
       - run: pnpm run build
