@@ -21,7 +21,7 @@ describe("executeWithCursorPagination", () => {
     expect(result.endCursor).toBeTruthy();
     expect(result.hasNextPage).toBe(false);
     expect(result.rows.map((row) => row.id)).toEqual(
-      posts.map((p) => p.id).sort()
+      posts.map((p) => p.id).sort((a, b) => a - b)
     );
   });
 
