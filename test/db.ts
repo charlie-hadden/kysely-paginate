@@ -1,5 +1,6 @@
 import { Generated, Kysely, SqliteDialect } from "kysely";
 import Database from "better-sqlite3";
+import { faker } from "@faker-js/faker";
 
 interface BlogPost {
   id: Generated<number>;
@@ -21,7 +22,7 @@ export const db = new Kysely<DB>({
 export function createSampleBlogPosts(count: number) {
   const posts = [...Array<never>(count)].map((_, i) => ({
     title: `Blog Post ${i}`,
-    body: `Content for post ${i}`,
+    body: faker.lorem.paragraphs(10),
     authorId: i % 3,
   }));
 

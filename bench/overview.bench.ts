@@ -1,4 +1,4 @@
-import { run, bench, group } from "mitata";
+import { beforeAll, bench, describe } from "vitest";
 import { createSampleBlogPosts, db } from "../test/db";
 import {
   defaultEncodeCursor,
@@ -7,14 +7,6 @@ import {
 } from "../src";
 
 const numRows = 100000;
-const perInsert = 1000;
-
-await db.deleteFrom("blogPosts").execute();
-
-for (let i = 0; i < numRows / perInsert; i++) {
-  await createSampleBlogPosts(perInsert);
-}
-
 const query = db.selectFrom("blogPosts").selectAll();
 const perPage = 100;
 
@@ -24,19 +16,45 @@ const perPage = 100;
 // single cursor decode, we just use this instead.
 const firstPageCursor = defaultEncodeCursor<any, any>([["id", 0]]);
 
-const lastPageNumber = numRows / perPage;
-const lastPageCursor = defaultEncodeCursor<any, any>([
-  [
-    "id",
-    await query
-      .limit(1)
-      .offset(numRows - perPage - 1)
-      .executeTakeFirstOrThrow()
-      .then((row) => row.id),
-  ],
-]);
+const middlePageNumber = numRows / perPage / 2;
+let middlePageCursor: string | undefined;
 
-group("loading page 1", () => {
+const lastPageNumber = numRows / perPage;
+let lastPageCursor: string | undefined;
+
+beforeAll(async () => {
+  await db.deleteFrom("blogPosts").execute();
+
+  const perInsert = 1000;
+
+  for (let i = 0; i < numRows / perInsert; i++) {
+    await createSampleBlogPosts(perInsert);
+  }
+
+  middlePageCursor = defaultEncodeCursor<any, any>([
+    [
+      "id",
+      await query
+        .limit(1)
+        .offset(numRows / 2 - perPage - 1)
+        .executeTakeFirstOrThrow()
+        .then((row) => row.id),
+    ],
+  ]);
+
+  lastPageCursor = defaultEncodeCursor<any, any>([
+    [
+      "id",
+      await query
+        .limit(1)
+        .offset(numRows - perPage - 1)
+        .executeTakeFirstOrThrow()
+        .then((row) => row.id),
+    ],
+  ]);
+});
+
+describe("loading page 1", () => {
   bench(`executeWithCursorPagination`, async () => {
     await executeWithCursorPagination(query, {
       perPage,
@@ -59,7 +77,30 @@ group("loading page 1", () => {
   });
 });
 
-group(`loading page ${lastPageNumber}`, () => {
+describe(`loading page ${middlePageNumber}`, () => {
+  bench(`executeWithCursorPagination`, async () => {
+    await executeWithCursorPagination(query, {
+      perPage,
+      after: middlePageCursor,
+      fields: [["id", "asc"]],
+    });
+  });
+
+  Object.entries({
+    "without deferred join": false,
+    "with deferred join": true,
+  }).forEach(([description, useDeferredJoin]) => {
+    bench(`executeWithOffsetPagination (${description})`, async () => {
+      await executeWithOffsetPagination(query.orderBy("id", "asc"), {
+        perPage,
+        page: middlePageNumber,
+        useDeferredJoin,
+      });
+    });
+  });
+});
+
+describe(`loading page ${lastPageNumber}`, () => {
   bench(`executeWithCursorPagination`, async () => {
     await executeWithCursorPagination(query, {
       perPage,
@@ -81,5 +122,3 @@ group(`loading page ${lastPageNumber}`, () => {
     });
   });
 });
-
-await run();

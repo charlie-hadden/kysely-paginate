@@ -11,28 +11,28 @@
   "engines": {
     "node": ">= 16.14.0"
   },
-  "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.cjs"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "release": "pnpm run build && pnpm changeset publish",
-    "benchmark": "tsx benchmark/index.ts",
+    "bench": "vitest bench",
     "lint": "eslint .",
     "test": "vitest",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.1",
+    "@faker-js/faker": "^7.6.0",
     "@types/better-sqlite3": "^7.6.4",
     "@typescript-eslint/eslint-plugin": "^5.58.0",
     "@typescript-eslint/parser": "^5.58.0",
@@ -41,12 +41,10 @@
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
     "kysely": "^0.24.2",
-    "mitata": "^0.1.6",
     "prettier": "^2.8.7",
     "tsup": "^6.7.0",
-    "tsx": "^3.12.6",
     "typescript": "^5.0.4",
-    "vitest": "^0.30.1"
+    "vitest": "0.30.1"
   },
   "peerDependencies": {
     "kysely": "^0.24.2"

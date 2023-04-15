@@ -20,11 +20,11 @@ export async function executeWithOffsetPagination<O>(
   qb = qb.limit(opts.perPage + 1).offset((opts.page - 1) * opts.perPage);
 
   if (opts.useDeferredJoin ?? true) {
+    const subquery = qb.clearSelect().select(primaryKey);
+
     qb = qb
       .clearWhere() // TODO: Need to check this is actually what we want
-      .where((eb) =>
-        eb.cmpr(primaryKey, "in", qb.clearSelect().select(primaryKey))
-      )
+      .where((eb) => eb.cmpr(primaryKey, "in", subquery))
       .clearOffset()
       .clearLimit();
   }
