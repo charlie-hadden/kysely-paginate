@@ -82,6 +82,26 @@ databases.forEach(([kind, db]) => {
             expect(result.hasPrevPage).toBeUndefined();
             expect(result.rows).toEqual([]);
           });
+
+          it("applies where conditions correctly", async () => {
+            await createSampleBlogPosts(db, 10);
+
+            const query = db
+              .selectFrom("blogPosts")
+              .selectAll()
+              .where("authorId", "=", 1);
+
+            const posts = await query.execute();
+
+            const result = await executeWithOffsetPagination(query, {
+              perPage: 50,
+              page: 1,
+              experimental_useDeferredJoin: useDeferredJoin,
+            });
+
+            expect(result.hasNextPage).toBe(false);
+            expect(result.rows).toEqual(posts);
+          });
         });
       });
 

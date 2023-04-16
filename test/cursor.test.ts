@@ -204,6 +204,26 @@ databases.forEach(([kind, db]) => {
         }
       });
 
+      it("applies where conditions correctly", async () => {
+        await createSampleBlogPosts(db, 10);
+
+        const query = db
+          .selectFrom("blogPosts")
+          .selectAll()
+          .where("authorId", "=", 1);
+
+        const posts = await query.orderBy("id", "asc").execute();
+
+        const result = await executeWithCursorPagination(query, {
+          perPage: 50,
+          after: defaultEncodeCursor<any, any>([["id", 0]]),
+          fields: [["id", "asc"]],
+        });
+
+        expect(result.hasNextPage).toBe(false);
+        expect(result.rows).toEqual(posts);
+      });
+
       it("supports custom cursor encoding", async () => {
         const [post] = await createSampleBlogPosts(db, 1);
 
