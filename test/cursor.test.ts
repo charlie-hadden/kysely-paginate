@@ -12,6 +12,7 @@ databases.forEach(([kind, db]) => {
 
     beforeEach(async () => {
       await db.deleteFrom("blogPosts").execute();
+      await db.deleteFrom("authors").execute();
     });
 
     describe("executeWithCursorPagination", () => {

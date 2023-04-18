@@ -1,6 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { executeWithOffsetPagination } from "../src";
-import { createSampleBlogPosts, databases, setupDatabase } from "./db";
+import {
+  createSampleAuthors,
+  createSampleBlogPosts,
+  databases,
+  setupDatabase,
+} from "./db";
 
 databases.forEach(([kind, db]) => {
   describe(kind, () => {
@@ -8,6 +13,7 @@ databases.forEach(([kind, db]) => {
 
     beforeEach(async () => {
       await db.deleteFrom("blogPosts").execute();
+      await db.deleteFrom("authors").execute();
     });
 
     describe("executeWithOffsetPagination", () => {
@@ -27,7 +33,9 @@ databases.forEach(([kind, db]) => {
             const result = await executeWithOffsetPagination(query, {
               perPage: 2,
               page: 1,
-              experimental_useDeferredJoin: useDeferredJoin,
+              experimental_deferredJoinPrimaryKey: useDeferredJoin
+                ? "blogPosts.id"
+                : undefined,
             });
 
             expect(result.hasNextPage).toBe(true);
@@ -51,7 +59,9 @@ databases.forEach(([kind, db]) => {
             const result = await executeWithOffsetPagination(query, {
               perPage: 2,
               page: 2,
-              experimental_useDeferredJoin: useDeferredJoin,
+              experimental_deferredJoinPrimaryKey: useDeferredJoin
+                ? "blogPosts.id"
+                : undefined,
             });
 
             expect(result.hasNextPage).toBe(false);
@@ -75,7 +85,9 @@ databases.forEach(([kind, db]) => {
             const result = await executeWithOffsetPagination(query, {
               perPage: 2,
               page: 20,
-              experimental_useDeferredJoin: useDeferredJoin,
+              experimental_deferredJoinPrimaryKey: useDeferredJoin
+                ? "blogPosts.id"
+                : undefined,
             });
 
             expect(result.hasNextPage).toBeUndefined();
@@ -89,18 +101,50 @@ databases.forEach(([kind, db]) => {
             const query = db
               .selectFrom("blogPosts")
               .selectAll()
-              .where("authorId", "=", 1);
+              .where("authorId", "=", 1)
+              .orderBy("id", "asc");
 
             const posts = await query.execute();
 
             const result = await executeWithOffsetPagination(query, {
               perPage: 50,
               page: 1,
-              experimental_useDeferredJoin: useDeferredJoin,
+              experimental_deferredJoinPrimaryKey: useDeferredJoin
+                ? "blogPosts.id"
+                : undefined,
             });
 
             expect(result.hasNextPage).toBe(false);
             expect(result.rows).toEqual(posts);
+          });
+
+          it("works with joins", async () => {
+            await createSampleBlogPosts(db, 10);
+            await createSampleAuthors(db);
+
+            const query = db
+              .selectFrom("blogPosts")
+              .innerJoin("authors", "authors.id", "blogPosts.authorId")
+              .select([
+                "blogPosts.id",
+                "blogPosts.title",
+                "blogPosts.authorId",
+                "authors.name as authorName",
+              ])
+              .orderBy("blogPosts.id", "asc");
+
+            const rows = await query.execute();
+
+            const result = await executeWithOffsetPagination(query, {
+              perPage: 50,
+              page: 1,
+              experimental_deferredJoinPrimaryKey: useDeferredJoin
+                ? "blogPosts.id"
+                : undefined,
+            });
+
+            expect(result.hasNextPage).toBe(false);
+            expect(result.rows).toEqual(rows);
           });
         });
       });
@@ -120,13 +164,12 @@ databases.forEach(([kind, db]) => {
           const withoutDeferredJoin = await executeWithOffsetPagination(query, {
             perPage: 5,
             page,
-            experimental_useDeferredJoin: false,
           });
 
           const withDeferredJoin = await executeWithOffsetPagination(query, {
             perPage: 5,
             page,
-            experimental_useDeferredJoin: true,
+            experimental_deferredJoinPrimaryKey: "blogPosts.id",
           });
 
           expect(withDeferredJoin).toEqual(withoutDeferredJoin);
