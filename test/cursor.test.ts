@@ -4,7 +4,12 @@ import {
   defaultEncodeCursor,
   executeWithCursorPagination,
 } from "../src";
-import { createSampleBlogPosts, databases, setupDatabase } from "./db";
+import {
+  createSampleAuthors,
+  createSampleBlogPosts,
+  databases,
+  setupDatabase,
+} from "./db";
 
 databases.forEach(([kind, db]) => {
   describe(kind, () => {
@@ -23,7 +28,7 @@ databases.forEach(([kind, db]) => {
 
         const result = await executeWithCursorPagination(query, {
           perPage: 2,
-          fields: [["id", "asc"]],
+          fields: [{ expression: "id", key: "id", direction: "asc" }],
         });
 
         expect(result.startCursor).toBeTruthy();
@@ -42,7 +47,7 @@ databases.forEach(([kind, db]) => {
         const result = await executeWithCursorPagination(query, {
           perPage: 2,
           cursorPerRow: true,
-          fields: [["id", "asc"]],
+          fields: [{ expression: "id", key: "id", direction: "asc" }],
         });
 
         expect(result.rows[0]?.$cursor).toEqual(result.endCursor);
@@ -56,7 +61,7 @@ databases.forEach(([kind, db]) => {
         const result = await executeWithCursorPagination(query, {
           perPage: 2,
           cursorPerRow: "foobar",
-          fields: [["id", "asc"]],
+          fields: [{ expression: "id", key: "id", direction: "asc" }],
         });
 
         expect(result.rows[0]?.foobar).toEqual(result.endCursor);
@@ -69,7 +74,7 @@ databases.forEach(([kind, db]) => {
 
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
-          fields: [["id", "asc"]],
+          fields: [{ expression: "id", key: "id", direction: "asc" }],
         });
 
         let cursor: string | undefined;
@@ -78,7 +83,7 @@ databases.forEach(([kind, db]) => {
           const result = await executeWithCursorPagination(query, {
             perPage: 2,
             after: cursor,
-            fields: [["id", "asc"]],
+            fields: [{ expression: "id", key: "id", direction: "asc" }],
           });
 
           cursor = result.endCursor;
@@ -95,8 +100,8 @@ databases.forEach(([kind, db]) => {
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
           fields: [
-            ["authorId", "asc"],
-            ["id", "asc"],
+            { expression: "authorId", key: "authorId", direction: "asc" },
+            { expression: "id", key: "id", direction: "asc" },
           ],
         });
 
@@ -107,8 +112,8 @@ databases.forEach(([kind, db]) => {
             perPage: 2,
             after: cursor,
             fields: [
-              ["authorId", "asc"],
-              ["id", "asc"],
+              { expression: "authorId", key: "authorId", direction: "asc" },
+              { expression: "id", key: "id", direction: "asc" },
             ],
           });
 
@@ -125,7 +130,7 @@ databases.forEach(([kind, db]) => {
 
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
-          fields: [["id", "desc"]],
+          fields: [{ expression: "id", key: "id", direction: "desc" }],
         });
 
         let cursor: string | undefined;
@@ -134,7 +139,7 @@ databases.forEach(([kind, db]) => {
           const result = await executeWithCursorPagination(query, {
             perPage: 2,
             after: cursor,
-            fields: [["id", "desc"]],
+            fields: [{ expression: "id", key: "id", direction: "desc" }],
           });
 
           cursor = result.endCursor;
@@ -151,8 +156,8 @@ databases.forEach(([kind, db]) => {
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
           fields: [
-            ["authorId", "desc"],
-            ["id", "desc"],
+            { expression: "authorId", key: "authorId", direction: "desc" },
+            { expression: "id", key: "id", direction: "desc" },
           ],
         });
 
@@ -163,8 +168,8 @@ databases.forEach(([kind, db]) => {
             perPage: 2,
             after: cursor,
             fields: [
-              ["authorId", "desc"],
-              ["id", "desc"],
+              { expression: "authorId", key: "authorId", direction: "desc" },
+              { expression: "id", key: "id", direction: "desc" },
             ],
           });
 
@@ -182,8 +187,8 @@ databases.forEach(([kind, db]) => {
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
           fields: [
-            ["authorId", "asc"],
-            ["id", "desc"],
+            { expression: "authorId", key: "authorId", direction: "asc" },
+            { expression: "id", key: "id", direction: "desc" },
           ],
         });
 
@@ -194,8 +199,8 @@ databases.forEach(([kind, db]) => {
             perPage: 2,
             after: cursor,
             fields: [
-              ["authorId", "asc"],
-              ["id", "desc"],
+              { expression: "authorId", key: "authorId", direction: "asc" },
+              { expression: "id", key: "id", direction: "desc" },
             ],
           });
 
@@ -217,12 +222,38 @@ databases.forEach(([kind, db]) => {
 
         const result = await executeWithCursorPagination(query, {
           perPage: 50,
-          after: defaultEncodeCursor<any, any>([["id", 0]]),
-          fields: [["id", "asc"]],
+          after: defaultEncodeCursor<any, any, any, any>([["id", 0]]),
+          fields: [{ expression: "id", key: "id", direction: "asc" }],
         });
 
         expect(result.hasNextPage).toBe(false);
         expect(result.rows).toEqual(posts);
+      });
+
+      it("works with joins", async () => {
+        await createSampleBlogPosts(db, 10);
+        await createSampleAuthors(db);
+
+        const query = db
+          .selectFrom("blogPosts")
+          .innerJoin("authors", "authors.id", "blogPosts.authorId")
+          .select([
+            "blogPosts.id",
+            "blogPosts.title",
+            "blogPosts.authorId",
+            "authors.name as authorName",
+          ]);
+
+        const rows = await query.orderBy("blogPosts.id", "asc").execute();
+
+        const result = await executeWithCursorPagination(query, {
+          perPage: 50,
+          after: defaultEncodeCursor<any, any, any, any>([["id", 0]]),
+          fields: [{ expression: "blogPosts.id", key: "id", direction: "asc" }],
+        });
+
+        expect(result.hasNextPage).toBe(false);
+        expect(result.rows).toEqual(rows);
       });
 
       it("supports custom cursor encoding", async () => {
@@ -232,7 +263,7 @@ databases.forEach(([kind, db]) => {
 
         const result = await executeWithCursorPagination(query, {
           perPage: 1,
-          fields: [["id", "asc"]],
+          fields: [{ expression: "id", key: "id", direction: "asc" }],
           encodeCursor: (values) =>
             new URLSearchParams(
               values.map(([field, value]) => [field, String(value)])
@@ -251,7 +282,7 @@ databases.forEach(([kind, db]) => {
         await executeWithCursorPagination(query, {
           perPage: 1,
           after: "id=0",
-          fields: [["id", "asc"]],
+          fields: [{ expression: "id", key: "id", direction: "asc" }],
           decodeCursor: (cursor, fields) => {
             passedCursor = cursor;
             passedFields = fields;
@@ -273,7 +304,7 @@ databases.forEach(([kind, db]) => {
         await executeWithCursorPagination(query, {
           perPage: 1,
           after: "id=0",
-          fields: [["id", "asc"]],
+          fields: [{ expression: "id", key: "id", direction: "asc" }],
           decodeCursor: () => ({ id: "0" }),
           parseCursor: (cursor) => {
             decodedCursor = cursor;
