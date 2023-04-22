@@ -1,10 +1,4 @@
-import {
-  Generated,
-  Kysely,
-  MysqlDialect,
-  PostgresDialect,
-  SqliteDialect,
-} from "kysely";
+import { Kysely, MysqlDialect, PostgresDialect, SqliteDialect } from "kysely";
 import { createPool as createMysqlPool } from "mysql2";
 import { Pool as PostgresPool } from "pg";
 import Database from "better-sqlite3";

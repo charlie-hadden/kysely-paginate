@@ -28,7 +28,7 @@ databases.forEach(([kind, db]) => {
 
         const result = await executeWithCursorPagination(query, {
           perPage: 2,
-          fields: [{ expression: "id", key: "id", direction: "asc" }],
+          fields: [{ expression: "id", direction: "asc" }],
         });
 
         expect(result.startCursor).toBeTruthy();
@@ -47,7 +47,7 @@ databases.forEach(([kind, db]) => {
         const result = await executeWithCursorPagination(query, {
           perPage: 2,
           cursorPerRow: true,
-          fields: [{ expression: "id", key: "id", direction: "asc" }],
+          fields: [{ expression: "id", direction: "asc" }],
         });
 
         expect(result.rows[0]?.$cursor).toEqual(result.endCursor);
@@ -61,7 +61,7 @@ databases.forEach(([kind, db]) => {
         const result = await executeWithCursorPagination(query, {
           perPage: 2,
           cursorPerRow: "foobar",
-          fields: [{ expression: "id", key: "id", direction: "asc" }],
+          fields: [{ expression: "id", direction: "asc" }],
         });
 
         expect(result.rows[0]?.foobar).toEqual(result.endCursor);
@@ -74,7 +74,7 @@ databases.forEach(([kind, db]) => {
 
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
-          fields: [{ expression: "id", key: "id", direction: "asc" }],
+          fields: [{ expression: "id", direction: "asc" }],
         });
 
         let cursor: string | undefined;
@@ -83,7 +83,7 @@ databases.forEach(([kind, db]) => {
           const result = await executeWithCursorPagination(query, {
             perPage: 2,
             after: cursor,
-            fields: [{ expression: "id", key: "id", direction: "asc" }],
+            fields: [{ expression: "id", direction: "asc" }],
           });
 
           cursor = result.endCursor;
@@ -100,8 +100,8 @@ databases.forEach(([kind, db]) => {
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
           fields: [
-            { expression: "authorId", key: "authorId", direction: "asc" },
-            { expression: "id", key: "id", direction: "asc" },
+            { expression: "authorId", direction: "asc" },
+            { expression: "id", direction: "asc" },
           ],
         });
 
@@ -112,8 +112,8 @@ databases.forEach(([kind, db]) => {
             perPage: 2,
             after: cursor,
             fields: [
-              { expression: "authorId", key: "authorId", direction: "asc" },
-              { expression: "id", key: "id", direction: "asc" },
+              { expression: "authorId", direction: "asc" },
+              { expression: "id", direction: "asc" },
             ],
           });
 
@@ -130,7 +130,7 @@ databases.forEach(([kind, db]) => {
 
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
-          fields: [{ expression: "id", key: "id", direction: "desc" }],
+          fields: [{ expression: "id", direction: "desc" }],
         });
 
         let cursor: string | undefined;
@@ -139,7 +139,7 @@ databases.forEach(([kind, db]) => {
           const result = await executeWithCursorPagination(query, {
             perPage: 2,
             after: cursor,
-            fields: [{ expression: "id", key: "id", direction: "desc" }],
+            fields: [{ expression: "id", direction: "desc" }],
           });
 
           cursor = result.endCursor;
@@ -156,8 +156,8 @@ databases.forEach(([kind, db]) => {
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
           fields: [
-            { expression: "authorId", key: "authorId", direction: "desc" },
-            { expression: "id", key: "id", direction: "desc" },
+            { expression: "authorId", direction: "desc" },
+            { expression: "id", direction: "desc" },
           ],
         });
 
@@ -168,8 +168,8 @@ databases.forEach(([kind, db]) => {
             perPage: 2,
             after: cursor,
             fields: [
-              { expression: "authorId", key: "authorId", direction: "desc" },
-              { expression: "id", key: "id", direction: "desc" },
+              { expression: "authorId", direction: "desc" },
+              { expression: "id", direction: "desc" },
             ],
           });
 
@@ -187,8 +187,8 @@ databases.forEach(([kind, db]) => {
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
           fields: [
-            { expression: "authorId", key: "authorId", direction: "asc" },
-            { expression: "id", key: "id", direction: "desc" },
+            { expression: "authorId", direction: "asc" },
+            { expression: "id", direction: "desc" },
           ],
         });
 
@@ -199,8 +199,8 @@ databases.forEach(([kind, db]) => {
             perPage: 2,
             after: cursor,
             fields: [
-              { expression: "authorId", key: "authorId", direction: "asc" },
-              { expression: "id", key: "id", direction: "desc" },
+              { expression: "authorId", direction: "asc" },
+              { expression: "id", direction: "desc" },
             ],
           });
 
@@ -223,7 +223,7 @@ databases.forEach(([kind, db]) => {
         const result = await executeWithCursorPagination(query, {
           perPage: 50,
           after: defaultEncodeCursor<any, any, any, any>([["id", 0]]),
-          fields: [{ expression: "id", key: "id", direction: "asc" }],
+          fields: [{ expression: "id", direction: "asc" }],
         });
 
         expect(result.hasNextPage).toBe(false);
@@ -249,7 +249,7 @@ databases.forEach(([kind, db]) => {
         const result = await executeWithCursorPagination(query, {
           perPage: 50,
           after: defaultEncodeCursor<any, any, any, any>([["id", 0]]),
-          fields: [{ expression: "blogPosts.id", key: "id", direction: "asc" }],
+          fields: [{ expression: "blogPosts.id", direction: "asc", key: "id" }],
         });
 
         expect(result.hasNextPage).toBe(false);
@@ -263,7 +263,7 @@ databases.forEach(([kind, db]) => {
 
         const result = await executeWithCursorPagination(query, {
           perPage: 1,
-          fields: [{ expression: "id", key: "id", direction: "asc" }],
+          fields: [{ expression: "id", direction: "asc" }],
           encodeCursor: (values) =>
             new URLSearchParams(
               values.map(([field, value]) => [field, String(value)])
@@ -282,7 +282,7 @@ databases.forEach(([kind, db]) => {
         await executeWithCursorPagination(query, {
           perPage: 1,
           after: "id=0",
-          fields: [{ expression: "id", key: "id", direction: "asc" }],
+          fields: [{ expression: "id", direction: "asc" }],
           decodeCursor: (cursor, fields) => {
             passedCursor = cursor;
             passedFields = fields;
@@ -304,7 +304,7 @@ databases.forEach(([kind, db]) => {
         await executeWithCursorPagination(query, {
           perPage: 1,
           after: "id=0",
-          fields: [{ expression: "id", key: "id", direction: "asc" }],
+          fields: [{ expression: "id", direction: "asc" }],
           decodeCursor: () => ({ id: "0" }),
           parseCursor: (cursor) => {
             decodedCursor = cursor;
@@ -321,10 +321,7 @@ databases.forEach(([kind, db]) => {
 
 describe("defaultEncodeCursor", () => {
   it("returns a base64 encoded string", () => {
-    const cursor = defaultEncodeCursor<
-      { id: number; name: string },
-      [["name", "desc"], ["id", "desc"]]
-    >([
+    const cursor = defaultEncodeCursor<any, any, any, any>([
       ["name", "foo"],
       ["id", 1],
     ]);
@@ -335,10 +332,10 @@ describe("defaultEncodeCursor", () => {
 
 describe("defaultDecodeCursor", () => {
   it("decodes a valid cursor", () => {
-    const decoded = defaultDecodeCursor<
-      { id: number; name: string },
-      [["name", "desc"], ["id", "desc"]]
-    >("bmFtZT1mb28maWQ9MQ", ["name", "id"]);
+    const decoded = defaultDecodeCursor<any, any, any, any>(
+      "bmFtZT1mb28maWQ9MQ",
+      ["name", "id"]
+    );
 
     expect(decoded).toEqual({
       name: "foo",
@@ -350,7 +347,7 @@ describe("defaultDecodeCursor", () => {
     const cursor = Buffer.from("foo=1&bar=2", "utf8").toString("base64url");
 
     expect(() =>
-      defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
+      defaultDecodeCursor<any, any, any, any>(cursor, ["foo"])
     ).toThrowError(/unexpected number of fields/i);
   });
 
@@ -360,7 +357,7 @@ describe("defaultDecodeCursor", () => {
     );
 
     expect(() =>
-      defaultDecodeCursor<{ foo: string }, [["foo", "desc"]]>(cursor, ["foo"])
+      defaultDecodeCursor<any, any, any, any>(cursor, ["foo"])
     ).toThrowError(/unexpected field name/i);
   });
 });

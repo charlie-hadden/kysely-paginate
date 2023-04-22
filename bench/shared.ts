@@ -17,7 +17,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
   // cursor has a small overhead that all later pages will also have. Since what
   // we care about here is the pagination depth rather than if we can skip a
   // single cursor decode, we just use this instead.
-  const firstPageCursor = defaultEncodeCursor<any, any>([["id", 0]]);
+  const firstPageCursor = defaultEncodeCursor<any, any, any, any>([["id", 0]]);
 
   const middlePageNumber = numRows / perPage / 2;
   let middlePageCursor: string | undefined;
@@ -34,7 +34,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
       await createSampleBlogPosts(db, perInsert);
     }
 
-    middlePageCursor = defaultEncodeCursor<any, any>([
+    middlePageCursor = defaultEncodeCursor<any, any, any, any>([
       [
         "id",
         await query
@@ -45,7 +45,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
       ],
     ]);
 
-    lastPageCursor = defaultEncodeCursor<any, any>([
+    lastPageCursor = defaultEncodeCursor<any, any, any, any>([
       [
         "id",
         await query
@@ -62,7 +62,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
       await executeWithCursorPagination(query, {
         perPage,
         after: firstPageCursor,
-        fields: [["id", "asc"]],
+        fields: [{ expression: "id", direction: "asc" }],
       });
     });
 
@@ -87,7 +87,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
       await executeWithCursorPagination(query, {
         perPage,
         after: middlePageCursor,
-        fields: [["id", "asc"]],
+        fields: [{ expression: "id", direction: "asc" }],
       });
     });
 
@@ -112,7 +112,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
       await executeWithCursorPagination(query, {
         perPage,
         after: lastPageCursor,
-        fields: [["id", "asc"]],
+        fields: [{ expression: "id", direction: "asc" }],
       });
     });
 
