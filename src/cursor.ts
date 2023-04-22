@@ -38,7 +38,6 @@ type Fields<DB, TB extends keyof DB, O> = ReadonlyArray<
   Readonly<SortField<DB, TB, O>>
 >;
 
-// TODO: This probably shouldn't be named field names any more
 type FieldNames<DB, TB extends keyof DB, O, T extends Fields<DB, TB, O>> = {
   [TIndex in keyof T]: ExtractSortFieldKey<DB, TB, O, T[TIndex]>;
 };
