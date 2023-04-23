@@ -168,73 +168,47 @@ export async function executeWithCursorPagination<
     TFields
   >;
 
+  function applyCursor(
+    qb: SelectQueryBuilder<DB, TB, O>,
+    encoded: string,
+    defaultDirection: "asc" | "desc"
+  ) {
+    const decoded = decodeCursor(encoded, fieldNames);
+    const cursor = opts.parseCursor(decoded);
+
+    return qb.where(({ and, or, cmpr }) => {
+      let expression;
+
+      for (let i = fields.length - 1; i >= 0; --i) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const field = fields[i]!;
+
+        const comparison = field.direction === defaultDirection ? ">" : "<";
+        const value = cursor[field.key as keyof typeof cursor];
+
+        const conditions = [cmpr(field.expression, comparison, value)];
+
+        if (expression) {
+          conditions.push(
+            and([cmpr(field.expression, "=", value), expression])
+          );
+        }
+
+        expression = or(conditions);
+      }
+
+      if (!expression) {
+        throw new Error("Error building cursor expression");
+      }
+
+      return expression;
+    });
+  }
+
+  if (opts.after) qb = applyCursor(qb, opts.after, "asc");
+  if (opts.before) qb = applyCursor(qb, opts.before, "desc");
+
   const reversed = !!opts.before && !opts.after;
-
-  if (opts.after) {
-    const decoded = decodeCursor(opts.after, fieldNames);
-    const cursor = opts.parseCursor(decoded);
-
-    qb = qb.where(({ and, or, cmpr }) => {
-      let expression;
-
-      for (let i = fields.length - 1; i >= 0; --i) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const field = fields[i]!;
-
-        const comparison = field.direction === "asc" ? ">" : "<";
-        const value = cursor[field.key as keyof typeof cursor];
-
-        const conditions = [cmpr(field.expression, comparison, value)];
-
-        if (expression) {
-          conditions.push(
-            and([cmpr(field.expression, "=", value), expression])
-          );
-        }
-
-        expression = or(conditions);
-      }
-
-      if (!expression) {
-        throw new Error("Error building cursor expression");
-      }
-
-      return expression;
-    });
-  }
-
-  if (opts.before) {
-    const decoded = decodeCursor(opts.before, fieldNames);
-    const cursor = opts.parseCursor(decoded);
-
-    qb = qb.where(({ and, or, cmpr }) => {
-      let expression;
-
-      for (let i = fields.length - 1; i >= 0; --i) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const field = fields[i]!;
-
-        const comparison = field.direction === "asc" ? "<" : ">";
-        const value = cursor[field.key as keyof typeof cursor];
-
-        const conditions = [cmpr(field.expression, comparison, value)];
-
-        if (expression) {
-          conditions.push(
-            and([cmpr(field.expression, "=", value), expression])
-          );
-        }
-
-        expression = or(conditions);
-      }
-
-      if (!expression) {
-        throw new Error("Error building cursor expression");
-      }
-
-      return expression;
-    });
-  }
 
   for (const { expression, direction } of fields) {
     qb = qb.orderBy(
@@ -248,13 +222,9 @@ export async function executeWithCursorPagination<
 
   // If we fetched an extra row to determine if we have a next page, that
   // shouldn't be in the returned results
-  if (rows.length > opts.perPage) {
-    rows.pop();
-  }
+  if (rows.length > opts.perPage) rows.pop();
 
-  if (reversed) {
-    rows.reverse();
-  }
+  if (reversed) rows.reverse();
 
   const startRow = rows[0];
   const endRow = rows[rows.length - 1];
