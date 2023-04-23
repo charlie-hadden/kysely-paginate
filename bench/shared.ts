@@ -64,8 +64,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         perPage,
         after: firstPageCursor,
         fields: [{ expression: "id", direction: "asc" }],
-        parseCursor: (cursor) =>
-          z.object({ id: z.coerce.number().int() }).parse(cursor),
+        parseCursor: z.object({ id: z.coerce.number().int() }),
       });
     });
 
@@ -91,8 +90,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         perPage,
         after: middlePageCursor,
         fields: [{ expression: "id", direction: "asc" }],
-        parseCursor: (cursor) =>
-          z.object({ id: z.coerce.number().int() }).parse(cursor),
+        parseCursor: z.object({ id: z.coerce.number().int() }),
       });
     });
 
@@ -118,8 +116,7 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         perPage,
         after: lastPageCursor,
         fields: [{ expression: "id", direction: "asc" }],
-        parseCursor: (cursor) =>
-          z.object({ id: z.coerce.number().int() }).parse(cursor),
+        parseCursor: z.object({ id: z.coerce.number().int() }),
       });
     });
 
