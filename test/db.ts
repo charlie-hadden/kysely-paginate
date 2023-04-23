@@ -1,24 +1,24 @@
-import {
-  Generated,
-  Kysely,
-  MysqlDialect,
-  PostgresDialect,
-  SqliteDialect,
-} from "kysely";
+import { Kysely, MysqlDialect, PostgresDialect, SqliteDialect } from "kysely";
 import { createPool as createMysqlPool } from "mysql2";
 import { Pool as PostgresPool } from "pg";
 import Database from "better-sqlite3";
 import { faker } from "@faker-js/faker";
 
 interface BlogPost {
-  id: Generated<number>;
+  id: number;
   title: string;
   body: string;
   authorId: number;
 }
 
+interface Author {
+  id: number;
+  name: string;
+}
+
 export interface DB {
   blogPosts: BlogPost;
+  authors: Author;
 }
 
 export const databases = [
@@ -75,6 +75,17 @@ export async function createSampleBlogPosts(db: Kysely<DB>, count: number) {
   return posts;
 }
 
+export async function createSampleAuthors(db: Kysely<DB>) {
+  const authors = [...Array<never>(3)].map((_, i) => ({
+    id: i + 1,
+    name: `Author ${i + 1}`,
+  }));
+
+  await db.insertInto("authors").values(authors).execute();
+
+  return authors;
+}
+
 export async function setupDatabase(db: Kysely<DB>) {
   await db.schema.dropTable("blogPosts").ifExists().execute();
   await db.schema
@@ -88,5 +99,12 @@ export async function setupDatabase(db: Kysely<DB>) {
     .createIndex("blogPosts_authorId_index")
     .on("blogPosts")
     .column("authorId")
+    .execute();
+
+  await db.schema.dropTable("authors").ifExists().execute();
+  await db.schema
+    .createTable("authors")
+    .addColumn("id", "integer", (col) => col.primaryKey())
+    .addColumn("name", "varchar(255)", (col) => col.notNull())
     .execute();
 }

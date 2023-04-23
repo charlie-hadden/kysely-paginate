@@ -1,37 +1,95 @@
-import { OrderByDirectionExpression, SelectQueryBuilder } from "kysely";
+import {
+  OrderByDirectionExpression,
+  ReferenceExpression,
+  SelectQueryBuilder,
+  StringReference,
+} from "kysely";
 
-type Fields<O> = Readonly<
-  Readonly<[field: keyof O & string, direction: OrderByDirectionExpression]>[]
+type SortField<DB, TB extends keyof DB, O> =
+  | {
+      expression:
+        | (StringReference<DB, TB> & keyof O & string)
+        | (StringReference<DB, TB> & `${string}.${keyof O & string}`);
+      direction: OrderByDirectionExpression;
+      key?: keyof O & string;
+    }
+  | {
+      expression: ReferenceExpression<DB, TB>;
+      direction: OrderByDirectionExpression;
+      key: keyof O & string;
+    };
+
+type ExtractSortFieldKey<
+  DB,
+  TB extends keyof DB,
+  O,
+  T extends SortField<DB, TB, O>
+> = T["key"] extends keyof O & string
+  ? T["key"]
+  : T["expression"] extends keyof O & string
+  ? T["expression"]
+  : T["expression"] extends `${string}.${infer K}`
+  ? K extends keyof O & string
+    ? K
+    : never
+  : never;
+
+type Fields<DB, TB extends keyof DB, O> = ReadonlyArray<
+  Readonly<SortField<DB, TB, O>>
 >;
 
-type FieldNames<O, T extends Fields<O>> = {
-  [TIndex in keyof T]: T[TIndex][0];
+type FieldNames<DB, TB extends keyof DB, O, T extends Fields<DB, TB, O>> = {
+  [TIndex in keyof T]: ExtractSortFieldKey<DB, TB, O, T[TIndex]>;
 };
 
-type EncodeCursorValues<O, T extends Fields<O>> = {
-  [TIndex in keyof T]: [T[TIndex][0], O[T[TIndex][0]]];
+type EncodeCursorValues<
+  DB,
+  TB extends keyof DB,
+  O,
+  T extends Fields<DB, TB, O>
+> = {
+  [TIndex in keyof T]: [
+    ExtractSortFieldKey<DB, TB, O, T[TIndex]>,
+    O[ExtractSortFieldKey<DB, TB, O, T[TIndex]>]
+  ];
 };
 
-export type CursorEncoder<O, T extends Fields<O>> = (
-  values: EncodeCursorValues<O, T>
-) => string;
+export type CursorEncoder<
+  DB,
+  TB extends keyof DB,
+  O,
+  T extends Fields<DB, TB, O>
+> = (values: EncodeCursorValues<DB, TB, O, T>) => string;
 
-type DecodedCursor<T extends Fields<any>> = {
-  [TField in T[number][0]]: string;
+type DecodedCursor<DB, TB extends keyof DB, O, T extends Fields<DB, TB, O>> = {
+  [TField in ExtractSortFieldKey<DB, TB, O, T[number]>]: string;
 };
 
-export type CursorDecoder<O, T extends Fields<O>> = (
+export type CursorDecoder<
+  DB,
+  TB extends keyof DB,
+  O,
+  T extends Fields<DB, TB, O>
+> = (
   cursor: string,
-  fields: FieldNames<O, T>
-) => DecodedCursor<T>;
+  fields: FieldNames<DB, TB, O, T>
+) => DecodedCursor<DB, TB, O, T>;
 
-type ParsedCursorValues<O, T extends Fields<O>> = {
-  [TField in T[number][0]]: O[TField];
+type ParsedCursorValues<
+  DB,
+  TB extends keyof DB,
+  O,
+  T extends Fields<DB, TB, O>
+> = {
+  [TField in ExtractSortFieldKey<DB, TB, O, T[number]>]: O[TField];
 };
 
-export type CursorParser<O, T extends Fields<O>> = (
-  cursor: DecodedCursor<T>
-) => ParsedCursorValues<O, T>;
+export type CursorParser<
+  DB,
+  TB extends keyof DB,
+  O,
+  T extends Fields<DB, TB, O>
+> = (cursor: DecodedCursor<DB, TB, O, T>) => ParsedCursorValues<DB, TB, O, T>;
 
 type CursorPaginationResultRow<
   TRow,
@@ -57,71 +115,90 @@ export type CursorPaginationResult<
 };
 
 export async function executeWithCursorPagination<
+  DB,
+  TB extends keyof DB,
   O,
-  const TFields extends Fields<O>,
+  const TFields extends Fields<DB, TB, O>,
   TCursorKey extends string | boolean | undefined = undefined
 >(
-  qb: SelectQueryBuilder<any, any, O>,
+  qb: SelectQueryBuilder<DB, TB, O>,
   opts: {
     perPage: number;
     after?: string;
     before?: string;
     cursorPerRow?: TCursorKey;
     fields: TFields;
-    encodeCursor?: CursorEncoder<O, TFields>;
-    decodeCursor?: CursorDecoder<O, TFields>;
-    parseCursor?: CursorParser<O, TFields>;
+    encodeCursor?: CursorEncoder<DB, TB, O, TFields>;
+    decodeCursor?: CursorDecoder<DB, TB, O, TFields>;
+    parseCursor: CursorParser<DB, TB, O, TFields>;
   }
 ): Promise<CursorPaginationResult<O, TCursorKey>> {
   const encodeCursor = opts.encodeCursor ?? defaultEncodeCursor;
   const decodeCursor = opts.decodeCursor ?? defaultDecodeCursor;
 
+  const fields = opts.fields.map((field) => {
+    let key = field.key;
+
+    if (!key && typeof field.expression === "string") {
+      const expressionParts = field.expression.split(".");
+
+      key = (expressionParts[1] ?? expressionParts[0]) as
+        | (keyof O & string)
+        | undefined;
+    }
+
+    if (!key) throw new Error("missing key");
+
+    return { ...field, key };
+  });
+
   function generateCursor(row: O): string {
-    const cursorFieldValues = opts.fields.map(([field]) => [
-      field,
-      row[field],
-    ]) as EncodeCursorValues<O, TFields>;
+    const cursorFieldValues = fields.map(({ key }) => [
+      key,
+      row[key],
+    ]) as EncodeCursorValues<DB, TB, O, TFields>;
 
     return encodeCursor(cursorFieldValues);
   }
 
-  const fieldNames = opts.fields.map((field) => field[0]) as FieldNames<
+  const fieldNames = fields.map((field) => field.key) as FieldNames<
+    DB,
+    TB,
     O,
     TFields
   >;
 
   if (opts.after) {
     const decoded = decodeCursor(opts.after, fieldNames);
-    const cursor = opts.parseCursor ? opts.parseCursor(decoded) : decoded;
+    const cursor = opts.parseCursor(decoded);
 
     qb = qb.where(({ and, or, cmpr }) => {
       function apply(index: number) {
-        const field = opts.fields[index];
+        const field = fields[index];
 
         if (!field) {
           throw new Error("Unknown cursor index");
         }
 
-        const [column, direction] = field;
-        const value = cursor[column];
+        const value = cursor[field.key as keyof typeof cursor];
 
         const conditions = [
           cmpr(
-            column,
-            direction === "asc" ? ">" : "<",
+            field.expression,
+            field.direction === "asc" ? ">" : "<",
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            value as any
+            value
           ),
         ];
 
-        if (index < opts.fields.length - 1) {
+        if (index < fields.length - 1) {
           conditions.push(
             and([
               cmpr(
-                column,
+                field.expression,
                 "=",
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                value as any
+                value
               ),
               apply(index + 1),
             ])
@@ -135,8 +212,8 @@ export async function executeWithCursorPagination<
     });
   }
 
-  for (const [field, direction] of opts.fields) {
-    qb = qb.orderBy(field, direction);
+  for (const { expression, direction } of fields) {
+    qb = qb.orderBy(expression, direction);
   }
 
   const rows = await qb.limit(opts.perPage + 1).execute();
@@ -173,19 +250,22 @@ export async function executeWithCursorPagination<
   };
 }
 
-export function defaultEncodeCursor<O, T extends Fields<O>>(
-  values: EncodeCursorValues<O, T>
-) {
+export function defaultEncodeCursor<
+  DB,
+  TB extends keyof DB,
+  O,
+  T extends Fields<DB, TB, O>
+>(values: EncodeCursorValues<DB, TB, O, T>) {
   const cursor = new URLSearchParams();
 
-  for (const [column, value] of values) {
+  for (const [key, value] of values) {
     switch (typeof value) {
       case "string":
-        cursor.set(column, value);
+        cursor.set(key, value);
         break;
 
       case "number":
-        cursor.set(column, String(value));
+        cursor.set(key, String(value));
         break;
 
       default:
@@ -197,10 +277,15 @@ export function defaultEncodeCursor<O, T extends Fields<O>>(
   return Buffer.from(cursor.toString(), "utf8").toString("base64url");
 }
 
-export function defaultDecodeCursor<O, T extends Fields<O>>(
+export function defaultDecodeCursor<
+  DB,
+  TB extends keyof DB,
+  O,
+  T extends Fields<DB, TB, O>
+>(
   cursor: string,
-  fields: FieldNames<O, T>
-): DecodedCursor<T> {
+  fields: FieldNames<DB, TB, O, T>
+): DecodedCursor<DB, TB, O, T> {
   let parsed;
 
   try {
@@ -230,5 +315,5 @@ export function defaultDecodeCursor<O, T extends Fields<O>>(
     }
   }
 
-  return Object.fromEntries(parsed) as DecodedCursor<T>;
+  return Object.fromEntries(parsed) as DecodedCursor<DB, TB, O, T>;
 }

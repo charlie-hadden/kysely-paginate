@@ -1,4 +1,4 @@
-import { SelectQueryBuilder, sql } from "kysely";
+import { SelectQueryBuilder, StringReference, sql } from "kysely";
 
 export type OffsetPaginationResult<O> = {
   hasNextPage: boolean | undefined;
@@ -6,32 +6,30 @@ export type OffsetPaginationResult<O> = {
   rows: O[];
 };
 
-export async function executeWithOffsetPagination<O>(
-  qb: SelectQueryBuilder<any, any, O>,
+export async function executeWithOffsetPagination<O, DB, TB extends keyof DB>(
+  qb: SelectQueryBuilder<DB, TB, O>,
   opts: {
     perPage: number;
     page: number;
-    experimental_useDeferredJoin?: boolean;
+    experimental_deferredJoinPrimaryKey?: StringReference<DB, TB>;
   }
 ): Promise<OffsetPaginationResult<O>> {
-  // TODO: This should be configurable
-  const primaryKey = "id";
-
   qb = qb.limit(opts.perPage + 1).offset((opts.page - 1) * opts.perPage);
 
-  if (opts.experimental_useDeferredJoin) {
-    const ids = await qb
+  const deferredJoinPrimaryKey = opts.experimental_deferredJoinPrimaryKey;
+
+  if (deferredJoinPrimaryKey) {
+    const primaryKeys = await qb
       .clearSelect()
-      .select(primaryKey)
+      .select((eb) => eb.ref(deferredJoinPrimaryKey).as("primaryKey"))
       .execute()
-      // FIXME: This cast won't be needed once `primaryKey` is configurable and
-      // typed properly
-      .then((rows) => rows.map((row) => row[primaryKey] as number));
+      .then((rows) => rows.map((row) => row.primaryKey));
 
     qb = qb
       .where((eb) =>
-        ids.length > 0
-          ? eb.cmpr(primaryKey, "in", ids)
+        primaryKeys.length > 0
+          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            eb.cmpr(deferredJoinPrimaryKey, "in", primaryKeys as any)
           : eb.cmpr(sql`1`, "=", 0)
       )
       .clearOffset()
