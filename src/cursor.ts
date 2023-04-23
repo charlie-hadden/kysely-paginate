@@ -173,29 +173,31 @@ export async function executeWithCursorPagination<
     const cursor = opts.parseCursor(decoded);
 
     qb = qb.where(({ and, or, cmpr }) => {
-      function apply(index: number) {
-        const field = fields[index];
+      let expression;
 
-        if (!field) {
-          throw new Error("Unknown cursor index");
-        }
+      for (let i = fields.length - 1; i >= 0; --i) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const field = fields[i]!;
 
+        const comparison = field.direction === "asc" ? ">" : "<";
         const value = cursor[field.key as keyof typeof cursor];
 
-        const conditions = [
-          cmpr(field.expression, field.direction === "asc" ? ">" : "<", value),
-        ];
+        const conditions = [cmpr(field.expression, comparison, value)];
 
-        if (index < fields.length - 1) {
+        if (expression) {
           conditions.push(
-            and([cmpr(field.expression, "=", value), apply(index + 1)])
+            and([cmpr(field.expression, "=", value), expression])
           );
         }
 
-        return or(conditions);
+        expression = or(conditions);
       }
 
-      return apply(0);
+      if (!expression) {
+        throw new Error("Error building cursor expression");
+      }
+
+      return expression;
     });
   }
 
