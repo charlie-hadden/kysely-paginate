@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   defaultDecodeCursor,
   defaultEncodeCursor,
@@ -29,6 +30,8 @@ databases.forEach(([kind, db]) => {
         const result = await executeWithCursorPagination(query, {
           perPage: 2,
           fields: [{ expression: "id", direction: "asc" }],
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         expect(result.startCursor).toBeTruthy();
@@ -48,6 +51,8 @@ databases.forEach(([kind, db]) => {
           perPage: 2,
           cursorPerRow: true,
           fields: [{ expression: "id", direction: "asc" }],
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         expect(result.rows[0]?.$cursor).toEqual(result.endCursor);
@@ -62,6 +67,8 @@ databases.forEach(([kind, db]) => {
           perPage: 2,
           cursorPerRow: "foobar",
           fields: [{ expression: "id", direction: "asc" }],
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         expect(result.rows[0]?.foobar).toEqual(result.endCursor);
@@ -75,6 +82,8 @@ databases.forEach(([kind, db]) => {
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
           fields: [{ expression: "id", direction: "asc" }],
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         let cursor: string | undefined;
@@ -84,6 +93,8 @@ databases.forEach(([kind, db]) => {
             perPage: 2,
             after: cursor,
             fields: [{ expression: "id", direction: "asc" }],
+            parseCursor: (cursor) =>
+              z.object({ id: z.coerce.number().int() }).parse(cursor),
           });
 
           cursor = result.endCursor;
@@ -103,6 +114,13 @@ databases.forEach(([kind, db]) => {
             { expression: "authorId", direction: "asc" },
             { expression: "id", direction: "asc" },
           ],
+          parseCursor: (cursor) =>
+            z
+              .object({
+                id: z.coerce.number().int(),
+                authorId: z.coerce.number().int(),
+              })
+              .parse(cursor),
         });
 
         let cursor: string | undefined;
@@ -115,6 +133,13 @@ databases.forEach(([kind, db]) => {
               { expression: "authorId", direction: "asc" },
               { expression: "id", direction: "asc" },
             ],
+            parseCursor: (cursor) =>
+              z
+                .object({
+                  id: z.coerce.number().int(),
+                  authorId: z.coerce.number().int(),
+                })
+                .parse(cursor),
           });
 
           cursor = result.endCursor;
@@ -131,6 +156,8 @@ databases.forEach(([kind, db]) => {
         const fullResult = await executeWithCursorPagination(query, {
           perPage: 10,
           fields: [{ expression: "id", direction: "desc" }],
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         let cursor: string | undefined;
@@ -140,6 +167,8 @@ databases.forEach(([kind, db]) => {
             perPage: 2,
             after: cursor,
             fields: [{ expression: "id", direction: "desc" }],
+            parseCursor: (cursor) =>
+              z.object({ id: z.coerce.number().int() }).parse(cursor),
           });
 
           cursor = result.endCursor;
@@ -159,6 +188,13 @@ databases.forEach(([kind, db]) => {
             { expression: "authorId", direction: "desc" },
             { expression: "id", direction: "desc" },
           ],
+          parseCursor: (cursor) =>
+            z
+              .object({
+                id: z.coerce.number().int(),
+                authorId: z.coerce.number().int(),
+              })
+              .parse(cursor),
         });
 
         let cursor: string | undefined;
@@ -171,6 +207,13 @@ databases.forEach(([kind, db]) => {
               { expression: "authorId", direction: "desc" },
               { expression: "id", direction: "desc" },
             ],
+            parseCursor: (cursor) =>
+              z
+                .object({
+                  id: z.coerce.number().int(),
+                  authorId: z.coerce.number().int(),
+                })
+                .parse(cursor),
           });
 
           cursor = result.endCursor;
@@ -190,6 +233,13 @@ databases.forEach(([kind, db]) => {
             { expression: "authorId", direction: "asc" },
             { expression: "id", direction: "desc" },
           ],
+          parseCursor: (cursor) =>
+            z
+              .object({
+                id: z.coerce.number().int(),
+                authorId: z.coerce.number().int(),
+              })
+              .parse(cursor),
         });
 
         let cursor: string | undefined;
@@ -202,6 +252,13 @@ databases.forEach(([kind, db]) => {
               { expression: "authorId", direction: "asc" },
               { expression: "id", direction: "desc" },
             ],
+            parseCursor: (cursor) =>
+              z
+                .object({
+                  id: z.coerce.number().int(),
+                  authorId: z.coerce.number().int(),
+                })
+                .parse(cursor),
           });
 
           cursor = result.endCursor;
@@ -224,6 +281,8 @@ databases.forEach(([kind, db]) => {
           perPage: 50,
           after: defaultEncodeCursor<any, any, any, any>([["id", 0]]),
           fields: [{ expression: "id", direction: "asc" }],
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         expect(result.hasNextPage).toBe(false);
@@ -250,10 +309,36 @@ databases.forEach(([kind, db]) => {
           perPage: 50,
           after: defaultEncodeCursor<any, any, any, any>([["id", 0]]),
           fields: [{ expression: "blogPosts.id", direction: "asc", key: "id" }],
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         expect(result.hasNextPage).toBe(false);
         expect(result.rows).toEqual(rows);
+      });
+
+      it("works using other expressions", async () => {
+        await createSampleBlogPosts(db, 1);
+
+        const expr = db.fn.coalesce("id", "authorId");
+
+        const query = db
+          .selectFrom("blogPosts")
+          .selectAll()
+          .select(expr.as("field"));
+
+        const posts = await query.orderBy(expr, "asc").execute();
+
+        const result = await executeWithCursorPagination(query, {
+          perPage: 50,
+          after: defaultEncodeCursor<any, any, any, any>([["field", 0]]),
+          fields: [{ expression: expr, direction: "asc", key: "field" }],
+          parseCursor: (cursor) =>
+            z.object({ field: z.coerce.number().int() }).parse(cursor),
+        });
+
+        expect(result.hasNextPage).toBe(false);
+        expect(result.rows).toEqual(posts);
       });
 
       it("supports custom cursor encoding", async () => {
@@ -268,6 +353,8 @@ databases.forEach(([kind, db]) => {
             new URLSearchParams(
               values.map(([field, value]) => [field, String(value)])
             ).toString(),
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         expect(result.endCursor).toEqual(`id=${String(post?.id)}`);
@@ -289,6 +376,8 @@ databases.forEach(([kind, db]) => {
 
             return { id: "0" };
           },
+          parseCursor: (cursor) =>
+            z.object({ id: z.coerce.number().int() }).parse(cursor),
         });
 
         expect(passedCursor).toEqual("id=0");

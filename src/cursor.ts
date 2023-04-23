@@ -130,7 +130,7 @@ export async function executeWithCursorPagination<
     fields: TFields;
     encodeCursor?: CursorEncoder<DB, TB, O, TFields>;
     decodeCursor?: CursorDecoder<DB, TB, O, TFields>;
-    parseCursor?: CursorParser<DB, TB, O, TFields>;
+    parseCursor: CursorParser<DB, TB, O, TFields>;
   }
 ): Promise<CursorPaginationResult<O, TCursorKey>> {
   const encodeCursor = opts.encodeCursor ?? defaultEncodeCursor;
@@ -170,7 +170,7 @@ export async function executeWithCursorPagination<
 
   if (opts.after) {
     const decoded = decodeCursor(opts.after, fieldNames);
-    const cursor = opts.parseCursor ? opts.parseCursor(decoded) : decoded;
+    const cursor = opts.parseCursor(decoded);
 
     qb = qb.where(({ and, or, cmpr }) => {
       function apply(index: number) {

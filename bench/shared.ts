@@ -1,5 +1,6 @@
 import { beforeAll, bench, describe } from "vitest";
 import { Kysely } from "kysely";
+import { z } from "zod";
 import {
   defaultEncodeCursor,
   executeWithCursorPagination,
@@ -63,6 +64,8 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         perPage,
         after: firstPageCursor,
         fields: [{ expression: "id", direction: "asc" }],
+        parseCursor: (cursor) =>
+          z.object({ id: z.coerce.number().int() }).parse(cursor),
       });
     });
 
@@ -88,6 +91,8 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         perPage,
         after: middlePageCursor,
         fields: [{ expression: "id", direction: "asc" }],
+        parseCursor: (cursor) =>
+          z.object({ id: z.coerce.number().int() }).parse(cursor),
       });
     });
 
@@ -113,6 +118,8 @@ export function sharedBenchmarks(db: Kysely<DB>) {
         perPage,
         after: lastPageCursor,
         fields: [{ expression: "id", direction: "asc" }],
+        parseCursor: (cursor) =>
+          z.object({ id: z.coerce.number().int() }).parse(cursor),
       });
     });
 
