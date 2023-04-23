@@ -183,25 +183,12 @@ export async function executeWithCursorPagination<
         const value = cursor[field.key as keyof typeof cursor];
 
         const conditions = [
-          cmpr(
-            field.expression,
-            field.direction === "asc" ? ">" : "<",
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            value
-          ),
+          cmpr(field.expression, field.direction === "asc" ? ">" : "<", value),
         ];
 
         if (index < fields.length - 1) {
           conditions.push(
-            and([
-              cmpr(
-                field.expression,
-                "=",
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                value
-              ),
-              apply(index + 1),
-            ])
+            and([cmpr(field.expression, "=", value), apply(index + 1)])
           );
         }
 
