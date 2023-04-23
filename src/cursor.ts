@@ -168,6 +168,8 @@ export async function executeWithCursorPagination<
     TFields
   >;
 
+  const reversed = !!opts.before;
+
   if (opts.after) {
     const decoded = decodeCursor(opts.after, fieldNames);
     const cursor = opts.parseCursor(decoded);
@@ -201,8 +203,44 @@ export async function executeWithCursorPagination<
     });
   }
 
+  if (opts.before) {
+    const decoded = decodeCursor(opts.before, fieldNames);
+    const cursor = opts.parseCursor(decoded);
+
+    qb = qb.where(({ and, or, cmpr }) => {
+      let expression;
+
+      for (let i = fields.length - 1; i >= 0; --i) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const field = fields[i]!;
+
+        const comparison = field.direction === "asc" ? "<" : ">";
+        const value = cursor[field.key as keyof typeof cursor];
+
+        const conditions = [cmpr(field.expression, comparison, value)];
+
+        if (expression) {
+          conditions.push(
+            and([cmpr(field.expression, "=", value), expression])
+          );
+        }
+
+        expression = or(conditions);
+      }
+
+      if (!expression) {
+        throw new Error("Error building cursor expression");
+      }
+
+      return expression;
+    });
+  }
+
   for (const { expression, direction } of fields) {
-    qb = qb.orderBy(expression, direction);
+    qb = qb.orderBy(
+      expression,
+      reversed ? (direction === "asc" ? "desc" : "asc") : direction
+    );
   }
 
   const rows = await qb.limit(opts.perPage + 1).execute();
@@ -212,6 +250,10 @@ export async function executeWithCursorPagination<
   // shouldn't be in the returned results
   if (rows.length > opts.perPage) {
     rows.pop();
+  }
+
+  if (reversed) {
+    rows.reverse();
   }
 
   const startRow = rows[0];
