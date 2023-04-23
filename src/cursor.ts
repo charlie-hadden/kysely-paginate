@@ -168,7 +168,7 @@ export async function executeWithCursorPagination<
     TFields
   >;
 
-  const reversed = !!opts.before;
+  const reversed = !!opts.before && !opts.after;
 
   if (opts.after) {
     const decoded = decodeCursor(opts.after, fieldNames);

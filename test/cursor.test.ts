@@ -233,6 +233,108 @@ databases.forEach(([kind, db]) => {
         });
       });
 
+      describe("when providing both a 'before' and 'after' cursor", () => {
+        it("works correctly with a single sort", async () => {
+          await createSampleBlogPosts(db, 6);
+
+          const query = db.selectFrom("blogPosts").select(["id"]);
+
+          const fullResult = await executeWithCursorPagination(query, {
+            perPage: 6,
+            fields: [{ expression: "id", direction: "asc" }],
+            parseCursor: (cursor) =>
+              z.object({ id: z.coerce.number().int() }).parse(cursor),
+          });
+
+          const firstPage = await executeWithCursorPagination(query, {
+            perPage: 2,
+            before: fullResult.endCursor,
+            after: fullResult.startCursor,
+            fields: [{ expression: "id", direction: "asc" }],
+            parseCursor: (cursor) =>
+              z.object({ id: z.coerce.number().int() }).parse(cursor),
+          });
+
+          expect(firstPage.rows[0]?.id).toEqual(fullResult.rows[1]?.id);
+          expect(firstPage.rows[1]?.id).toEqual(fullResult.rows[2]?.id);
+
+          const secondPage = await executeWithCursorPagination(query, {
+            perPage: 4,
+            before: fullResult.endCursor,
+            after: firstPage.endCursor,
+            fields: [{ expression: "id", direction: "asc" }],
+            parseCursor: (cursor) =>
+              z.object({ id: z.coerce.number().int() }).parse(cursor),
+          });
+
+          expect(secondPage.rows.length).toEqual(2);
+          expect(secondPage.rows[0]?.id).toEqual(fullResult.rows[3]?.id);
+          expect(secondPage.rows[1]?.id).toEqual(fullResult.rows[4]?.id);
+        });
+
+        it("works correctly with multiple sorts", async () => {
+          await createSampleBlogPosts(db, 6);
+
+          const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+
+          const fullResult = await executeWithCursorPagination(query, {
+            perPage: 6,
+            fields: [
+              { expression: "authorId", direction: "asc" },
+              { expression: "id", direction: "desc" },
+            ],
+            parseCursor: (cursor) =>
+              z
+                .object({
+                  id: z.coerce.number().int(),
+                  authorId: z.coerce.number().int(),
+                })
+                .parse(cursor),
+          });
+
+          const firstPage = await executeWithCursorPagination(query, {
+            perPage: 2,
+            before: fullResult.endCursor,
+            after: fullResult.startCursor,
+            fields: [
+              { expression: "authorId", direction: "asc" },
+              { expression: "id", direction: "desc" },
+            ],
+            parseCursor: (cursor) =>
+              z
+                .object({
+                  id: z.coerce.number().int(),
+                  authorId: z.coerce.number().int(),
+                })
+                .parse(cursor),
+          });
+
+          expect(firstPage.rows[0]?.id).toEqual(fullResult.rows[1]?.id);
+          expect(firstPage.rows[1]?.id).toEqual(fullResult.rows[2]?.id);
+
+          const secondPage = await executeWithCursorPagination(query, {
+            perPage: 4,
+            before: fullResult.endCursor,
+            after: firstPage.endCursor,
+            fields: [
+              { expression: "authorId", direction: "asc" },
+              { expression: "id", direction: "desc" },
+            ],
+            parseCursor: (cursor) =>
+              z
+                .object({
+                  id: z.coerce.number().int(),
+                  authorId: z.coerce.number().int(),
+                })
+                .parse(cursor),
+          });
+
+          expect(secondPage.rows.length).toEqual(2);
+          expect(secondPage.rows[0]?.id).toEqual(fullResult.rows[3]?.id);
+          expect(secondPage.rows[1]?.id).toEqual(fullResult.rows[4]?.id);
+        });
+      });
+
       it("applies where conditions correctly", async () => {
         await createSampleBlogPosts(db, 10);
 
