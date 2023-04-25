@@ -276,12 +276,20 @@ export function defaultEncodeCursor<
         break;
 
       case "number":
-        cursor.set(key, String(value));
+      case "bigint":
+        cursor.set(key, value.toString(10));
         break;
 
+      case "object": {
+        if (value instanceof Date) {
+          cursor.set(key, value.toISOString());
+          break;
+        }
+      }
+
+      // eslint-disable-next-line no-fallthrough
       default:
-        // FIXME
-        throw new Error("Cursor value type not yet handled");
+        throw new Error(`Unable to encode '${key}'`);
     }
   }
 

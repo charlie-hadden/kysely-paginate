@@ -468,11 +468,15 @@ databases.forEach(([kind, db]) => {
 describe("defaultEncodeCursor", () => {
   it("returns a base64 encoded string", () => {
     const cursor = defaultEncodeCursor<any, any, any, any>([
-      ["name", "foo"],
-      ["id", 1],
+      ["string", "foo"],
+      ["date", new Date("2001-02-30")],
+      ["number", 1],
+      ["bigint", 1n],
     ]);
 
-    expect(cursor).toEqual("bmFtZT1mb28maWQ9MQ");
+    expect(cursor).toEqual(
+      "c3RyaW5nPWZvbyZkYXRlPTIwMDEtMDMtMDJUMDAlM0EwMCUzQTAwLjAwMFombnVtYmVyPTEmYmlnaW50PTE"
+    );
   });
 });
 
