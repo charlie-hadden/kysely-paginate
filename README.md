@@ -5,14 +5,35 @@ Pagination helpers for use with [Kysely](https://github.com/kysely-org/kysely).
 
 ## Cursor pagination
 ```ts
-const query = db.selectFrom("blogPosts").select(["id", "authorId"]);
+const query = db
+  .selectFrom("blogPosts")
+  .select(["id", "title", "body", "authorId"])
+  .where("authorId", "=", 1);
 
-const fullResult = await executeWithCursorPagination(query, {
+const result = await executeWithCursorPagination(query, {
   perPage: 10,
-  after: cursor,
   fields: [
-    ["authorId", "desc"],
-    ["id", "desc"],
+    { expression: "title", direction: "desc" },
+    { expression: "id", direction: "asc" },
   ],
+  parseCursor: (cursor) => ({
+    title: cursor.title,
+    id: parseInt(cursor.id, 10),
+  }),
 });
+```
+
+## Offset pagination
+```ts
+const query = db
+  .selectFrom("blogPosts")
+  .select(["id", "title", "body", "authorId"])
+  .where("authorId", "=", 1)
+  .orderBy("title", "desc")
+  .orderBy("id", "asc");
+
+const result = await executeWithOffsetPagination(query, {
+  perPage: 10,
+  page: 1,
+})
 ```
