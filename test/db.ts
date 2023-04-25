@@ -60,11 +60,13 @@ export const databases = [
   ],
 ] as const;
 
-export async function createSampleBlogPosts(db: Kysely<DB>, count: number) {
-  let blogPostIdCounter = 1;
-
+export async function createSampleBlogPosts(
+  db: Kysely<DB>,
+  count: number,
+  idCounter = 1
+) {
   const posts = [...Array<never>(count)].map((_, i) => ({
-    id: blogPostIdCounter++,
+    id: idCounter++,
     title: `Blog Post ${i}`,
     body: faker.lorem.paragraphs(10),
     authorId: i % 2,

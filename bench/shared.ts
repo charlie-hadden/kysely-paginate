@@ -31,8 +31,11 @@ export function sharedBenchmarks(db: Kysely<DB>) {
 
     await setupDatabase(db);
 
+    await db.deleteFrom("blogPosts").execute();
+    await db.deleteFrom("authors").execute();
+
     for (let i = 0; i < numRows / perInsert; i++) {
-      await createSampleBlogPosts(db, perInsert);
+      await createSampleBlogPosts(db, perInsert, i * perInsert);
     }
 
     middlePageCursor = defaultEncodeCursor<any, any, any, any>([
