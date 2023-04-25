@@ -36,6 +36,7 @@ databases.forEach(([kind, db]) => {
         expect(result.startCursor).toBeTruthy();
         expect(result.endCursor).toBeTruthy();
         expect(result.hasNextPage).toBe(false);
+        expect(result.hasPrevPage).toBe(undefined);
         expect(result.rows.map((row) => row.id)).toEqual(
           posts.map((p) => p.id).sort((a, b) => a - b)
         );
@@ -83,6 +84,8 @@ databases.forEach(([kind, db]) => {
             parseCursor: z.object({ id: z.coerce.number().int() }),
           });
 
+          expect(firstPage.hasNextPage).toBe(true);
+          expect(firstPage.hasPrevPage).toBe(undefined);
           expect(firstPage.rows[0]?.id).toEqual(posts[0]?.id);
           expect(firstPage.rows[1]?.id).toEqual(posts[1]?.id);
 
@@ -93,6 +96,8 @@ databases.forEach(([kind, db]) => {
             parseCursor: z.object({ id: z.coerce.number().int() }),
           });
 
+          expect(secondPage.hasNextPage).toBe(false);
+          expect(secondPage.hasPrevPage).toBe(undefined);
           expect(secondPage.rows[0]?.id).toEqual(posts[2]?.id);
           expect(secondPage.rows[1]?.id).toEqual(posts[3]?.id);
         });
@@ -119,6 +124,8 @@ databases.forEach(([kind, db]) => {
             }),
           });
 
+          expect(firstPage.hasNextPage).toBe(true);
+          expect(firstPage.hasPrevPage).toBe(undefined);
           expect(firstPage.rows[0]?.id).toEqual(fullResult[0]?.id);
           expect(firstPage.rows[1]?.id).toEqual(fullResult[1]?.id);
 
@@ -135,6 +142,8 @@ databases.forEach(([kind, db]) => {
             }),
           });
 
+          expect(secondPage.hasNextPage).toBe(false);
+          expect(secondPage.hasPrevPage).toBe(undefined);
           expect(secondPage.rows[0]?.id).toEqual(fullResult[2]?.id);
           expect(secondPage.rows[1]?.id).toEqual(fullResult[3]?.id);
         });
@@ -153,6 +162,8 @@ databases.forEach(([kind, db]) => {
             parseCursor: z.object({ id: z.coerce.number().int() }),
           });
 
+          expect(firstPage.hasNextPage).toBe(undefined);
+          expect(firstPage.hasPrevPage).toBe(true);
           expect(firstPage.rows[0]?.id).toEqual(posts[2]?.id);
           expect(firstPage.rows[1]?.id).toEqual(posts[3]?.id);
 
@@ -163,6 +174,8 @@ databases.forEach(([kind, db]) => {
             parseCursor: z.object({ id: z.coerce.number().int() }),
           });
 
+          expect(secondPage.hasNextPage).toBe(undefined);
+          expect(secondPage.hasPrevPage).toBe(false);
           expect(secondPage.rows[0]?.id).toEqual(posts[0]?.id);
           expect(secondPage.rows[1]?.id).toEqual(posts[1]?.id);
         });
@@ -193,6 +206,8 @@ databases.forEach(([kind, db]) => {
             }),
           });
 
+          expect(firstPage.hasNextPage).toBe(undefined);
+          expect(firstPage.hasPrevPage).toBe(true);
           expect(firstPage.rows[0]?.id).toEqual(fullResult[2]?.id);
           expect(firstPage.rows[1]?.id).toEqual(fullResult[3]?.id);
 
@@ -209,6 +224,8 @@ databases.forEach(([kind, db]) => {
             }),
           });
 
+          expect(secondPage.hasNextPage).toBe(undefined);
+          expect(secondPage.hasPrevPage).toBe(false);
           expect(secondPage.rows[0]?.id).toEqual(fullResult[0]?.id);
           expect(secondPage.rows[1]?.id).toEqual(fullResult[1]?.id);
         });
@@ -234,6 +251,8 @@ databases.forEach(([kind, db]) => {
             parseCursor: z.object({ id: z.coerce.number().int() }),
           });
 
+          expect(firstPage.hasNextPage).toBe(true);
+          expect(firstPage.hasPrevPage).toBe(undefined);
           expect(firstPage.rows[0]?.id).toEqual(fullResult.rows[1]?.id);
           expect(firstPage.rows[1]?.id).toEqual(fullResult.rows[2]?.id);
 
@@ -245,6 +264,8 @@ databases.forEach(([kind, db]) => {
             parseCursor: z.object({ id: z.coerce.number().int() }),
           });
 
+          expect(secondPage.hasNextPage).toBe(false);
+          expect(secondPage.hasPrevPage).toBe(undefined);
           expect(secondPage.rows.length).toEqual(2);
           expect(secondPage.rows[0]?.id).toEqual(fullResult.rows[3]?.id);
           expect(secondPage.rows[1]?.id).toEqual(fullResult.rows[4]?.id);
@@ -281,6 +302,8 @@ databases.forEach(([kind, db]) => {
             }),
           });
 
+          expect(firstPage.hasNextPage).toBe(true);
+          expect(firstPage.hasPrevPage).toBe(undefined);
           expect(firstPage.rows[0]?.id).toEqual(fullResult.rows[1]?.id);
           expect(firstPage.rows[1]?.id).toEqual(fullResult.rows[2]?.id);
 
@@ -298,6 +321,8 @@ databases.forEach(([kind, db]) => {
             }),
           });
 
+          expect(secondPage.hasNextPage).toBe(false);
+          expect(secondPage.hasPrevPage).toBe(undefined);
           expect(secondPage.rows.length).toEqual(2);
           expect(secondPage.rows[0]?.id).toEqual(fullResult.rows[3]?.id);
           expect(secondPage.rows[1]?.id).toEqual(fullResult.rows[4]?.id);

@@ -1,8 +1,8 @@
 import { SelectQueryBuilder, StringReference, sql } from "kysely";
 
 export type OffsetPaginationResult<O> = {
-  hasNextPage: boolean | undefined;
-  hasPrevPage: boolean | undefined;
+  hasNextPage?: boolean;
+  hasPrevPage?: boolean;
   rows: O[];
 };
 
