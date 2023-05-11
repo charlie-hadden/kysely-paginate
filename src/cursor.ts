@@ -91,7 +91,7 @@ export type CursorParser<
   T extends Fields<DB, TB, O>
 > = (cursor: DecodedCursor<DB, TB, O, T>) => ParsedCursorValues<DB, TB, O, T>;
 
-type CursorPaginationResultRow<
+export type CursorPaginationResultRow<
   TRow,
   TCursorKey extends string | boolean | undefined
 > = TRow & {
