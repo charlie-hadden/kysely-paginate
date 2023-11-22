@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
@@ -38,7 +40,7 @@ databases.forEach(([kind, db]) => {
         expect(result.hasNextPage).toBe(false);
         expect(result.hasPrevPage).toBe(undefined);
         expect(result.rows.map((row) => row.id)).toEqual(
-          posts.map((p) => p.id).sort((a, b) => a - b)
+          posts.map((p) => p.id).sort((a, b) => a - b),
         );
       });
 
@@ -410,7 +412,7 @@ databases.forEach(([kind, db]) => {
           fields: [{ expression: "id", direction: "asc" }],
           encodeCursor: (values) =>
             new URLSearchParams(
-              values.map(([field, value]) => [field, String(value)])
+              values.map(([field, value]) => [field, String(value)]),
             ).toString(),
           parseCursor: z.object({ id: z.coerce.number().int() }),
         });
@@ -475,7 +477,7 @@ describe("defaultEncodeCursor", () => {
     ]);
 
     expect(cursor).toEqual(
-      "c3RyaW5nPWZvbyZkYXRlPTIwMDEtMDMtMDJUMDAlM0EwMCUzQTAwLjAwMFombnVtYmVyPTEmYmlnaW50PTE"
+      "c3RyaW5nPWZvbyZkYXRlPTIwMDEtMDMtMDJUMDAlM0EwMCUzQTAwLjAwMFombnVtYmVyPTEmYmlnaW50PTE",
     );
   });
 });
@@ -484,7 +486,7 @@ describe("defaultDecodeCursor", () => {
   it("decodes a valid cursor", () => {
     const decoded = defaultDecodeCursor<any, any, any, any>(
       "bmFtZT1mb28maWQ9MQ",
-      ["name", "id"]
+      ["name", "id"],
     );
 
     expect(decoded).toEqual({
@@ -497,17 +499,17 @@ describe("defaultDecodeCursor", () => {
     const cursor = Buffer.from("foo=1&bar=2", "utf8").toString("base64url");
 
     expect(() =>
-      defaultDecodeCursor<any, any, any, any>(cursor, ["foo"])
+      defaultDecodeCursor<any, any, any, any>(cursor, ["foo"]),
     ).toThrowError(/unexpected number of fields/i);
   });
 
   it("throws an error if a field name doesn't match", () => {
     const cursor = Buffer.from(JSON.stringify([["bar", 1]]), "utf8").toString(
-      "base64url"
+      "base64url",
     );
 
     expect(() =>
-      defaultDecodeCursor<any, any, any, any>(cursor, ["foo"])
+      defaultDecodeCursor<any, any, any, any>(cursor, ["foo"]),
     ).toThrowError(/unexpected field name/i);
   });
 });

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { beforeAll, bench, describe } from "vitest";
 import { Kysely } from "kysely";
 import { z } from "zod";
