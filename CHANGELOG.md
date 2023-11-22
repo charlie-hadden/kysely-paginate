@@ -1,5 +1,15 @@
 # kysely-paginate
 
+## 0.3.0
+
+### Minor Changes
+
+- 6875b00: Relax peer dependency version
+
+### Patch Changes
+
+- 6875b00: Update dependencies
+
 ## 0.2.0
 
 ### Minor Changes
