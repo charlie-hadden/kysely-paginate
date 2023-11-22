@@ -12,7 +12,7 @@ export async function executeWithOffsetPagination<O, DB, TB extends keyof DB>(
     perPage: number;
     page: number;
     experimental_deferredJoinPrimaryKey?: StringReference<DB, TB>;
-  }
+  },
 ): Promise<OffsetPaginationResult<O>> {
   qb = qb.limit(opts.perPage + 1).offset((opts.page - 1) * opts.perPage);
 
@@ -23,14 +23,16 @@ export async function executeWithOffsetPagination<O, DB, TB extends keyof DB>(
       .clearSelect()
       .select((eb) => eb.ref(deferredJoinPrimaryKey).as("primaryKey"))
       .execute()
+      // @ts-expect-error TODO: Fix the type here later
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       .then((rows) => rows.map((row) => row.primaryKey));
 
     qb = qb
       .where((eb) =>
         primaryKeys.length > 0
-          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            eb.cmpr(deferredJoinPrimaryKey, "in", primaryKeys as any)
-          : eb.cmpr(sql`1`, "=", 0)
+          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+            eb(deferredJoinPrimaryKey, "in", primaryKeys as any)
+          : eb(sql`1`, "=", 0),
       )
       .clearOffset()
       .clearLimit();

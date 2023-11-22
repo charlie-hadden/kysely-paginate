@@ -44,7 +44,7 @@ databases.forEach(([kind, db]) => {
               posts
                 .map((p) => p.id)
                 .sort((a, b) => a - b)
-                .slice(0, 2)
+                .slice(0, 2),
             );
           });
 
@@ -70,7 +70,7 @@ databases.forEach(([kind, db]) => {
               posts
                 .map((p) => p.id)
                 .sort((a, b) => a - b)
-                .slice(2, 4)
+                .slice(2, 4),
             );
           });
 

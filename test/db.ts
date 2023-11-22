@@ -63,7 +63,7 @@ export const databases = [
 export async function createSampleBlogPosts(
   db: Kysely<DB>,
   count: number,
-  idCounter = 1
+  idCounter = 1,
 ) {
   const posts = [...Array<never>(count)].map((_, i) => ({
     id: idCounter++,

@@ -23,16 +23,16 @@ type ExtractSortFieldKey<
   DB,
   TB extends keyof DB,
   O,
-  T extends SortField<DB, TB, O>
+  T extends SortField<DB, TB, O>,
 > = T["key"] extends keyof O & string
   ? T["key"]
   : T["expression"] extends keyof O & string
-  ? T["expression"]
-  : T["expression"] extends `${string}.${infer K}`
-  ? K extends keyof O & string
-    ? K
-    : never
-  : never;
+    ? T["expression"]
+    : T["expression"] extends `${string}.${infer K}`
+      ? K extends keyof O & string
+        ? K
+        : never
+      : never;
 
 type Fields<DB, TB extends keyof DB, O> = ReadonlyArray<
   Readonly<SortField<DB, TB, O>>
@@ -46,11 +46,11 @@ type EncodeCursorValues<
   DB,
   TB extends keyof DB,
   O,
-  T extends Fields<DB, TB, O>
+  T extends Fields<DB, TB, O>,
 > = {
   [TIndex in keyof T]: [
     ExtractSortFieldKey<DB, TB, O, T[TIndex]>,
-    O[ExtractSortFieldKey<DB, TB, O, T[TIndex]>]
+    O[ExtractSortFieldKey<DB, TB, O, T[TIndex]>],
   ];
 };
 
@@ -58,7 +58,7 @@ export type CursorEncoder<
   DB,
   TB extends keyof DB,
   O,
-  T extends Fields<DB, TB, O>
+  T extends Fields<DB, TB, O>,
 > = (values: EncodeCursorValues<DB, TB, O, T>) => string;
 
 type DecodedCursor<DB, TB extends keyof DB, O, T extends Fields<DB, TB, O>> = {
@@ -69,17 +69,17 @@ export type CursorDecoder<
   DB,
   TB extends keyof DB,
   O,
-  T extends Fields<DB, TB, O>
+  T extends Fields<DB, TB, O>,
 > = (
   cursor: string,
-  fields: FieldNames<DB, TB, O, T>
+  fields: FieldNames<DB, TB, O, T>,
 ) => DecodedCursor<DB, TB, O, T>;
 
 type ParsedCursorValues<
   DB,
   TB extends keyof DB,
   O,
-  T extends Fields<DB, TB, O>
+  T extends Fields<DB, TB, O>,
 > = {
   [TField in ExtractSortFieldKey<DB, TB, O, T[number]>]: O[TField];
 };
@@ -88,25 +88,25 @@ export type CursorParser<
   DB,
   TB extends keyof DB,
   O,
-  T extends Fields<DB, TB, O>
+  T extends Fields<DB, TB, O>,
 > = (cursor: DecodedCursor<DB, TB, O, T>) => ParsedCursorValues<DB, TB, O, T>;
 
 type CursorPaginationResultRow<
   TRow,
-  TCursorKey extends string | boolean | undefined
+  TCursorKey extends string | boolean | undefined,
 > = TRow & {
   [K in TCursorKey extends undefined
     ? never
     : TCursorKey extends false
-    ? never
-    : TCursorKey extends true
-    ? "$cursor"
-    : TCursorKey]: string;
+      ? never
+      : TCursorKey extends true
+        ? "$cursor"
+        : TCursorKey]: string;
 };
 
 export type CursorPaginationResult<
   TRow,
-  TCursorKey extends string | boolean | undefined
+  TCursorKey extends string | boolean | undefined,
 > = {
   startCursor: string | undefined;
   endCursor: string | undefined;
@@ -120,7 +120,7 @@ export async function executeWithCursorPagination<
   TB extends keyof DB,
   O,
   const TFields extends Fields<DB, TB, O>,
-  TCursorKey extends string | boolean | undefined = undefined
+  TCursorKey extends string | boolean | undefined = undefined,
 >(
   qb: SelectQueryBuilder<DB, TB, O>,
   opts: {
@@ -134,7 +134,7 @@ export async function executeWithCursorPagination<
     parseCursor:
       | CursorParser<DB, TB, O, TFields>
       | { parse: CursorParser<DB, TB, O, TFields> };
-  }
+  },
 ): Promise<CursorPaginationResult<O, TCursorKey>> {
   const encodeCursor = opts.encodeCursor ?? defaultEncodeCursor;
   const decodeCursor = opts.decodeCursor ?? defaultDecodeCursor;
@@ -179,12 +179,12 @@ export async function executeWithCursorPagination<
   function applyCursor(
     qb: SelectQueryBuilder<DB, TB, O>,
     encoded: string,
-    defaultDirection: "asc" | "desc"
+    defaultDirection: "asc" | "desc",
   ) {
     const decoded = decodeCursor(encoded, fieldNames);
     const cursor = parseCursor(decoded);
 
-    return qb.where(({ and, or, cmpr }) => {
+    return qb.where(({ and, or, eb }) => {
       let expression;
 
       for (let i = fields.length - 1; i >= 0; --i) {
@@ -194,12 +194,10 @@ export async function executeWithCursorPagination<
         const comparison = field.direction === defaultDirection ? ">" : "<";
         const value = cursor[field.key as keyof typeof cursor];
 
-        const conditions = [cmpr(field.expression, comparison, value)];
+        const conditions = [eb(field.expression, comparison, value)];
 
         if (expression) {
-          conditions.push(
-            and([cmpr(field.expression, "=", value), expression])
-          );
+          conditions.push(and([eb(field.expression, "=", value), expression]));
         }
 
         expression = or(conditions);
@@ -221,7 +219,7 @@ export async function executeWithCursorPagination<
   for (const { expression, direction } of fields) {
     qb = qb.orderBy(
       expression,
-      reversed ? (direction === "asc" ? "desc" : "asc") : direction
+      reversed ? (direction === "asc" ? "desc" : "asc") : direction,
     );
   }
 
@@ -252,7 +250,7 @@ export async function executeWithCursorPagination<
         const cursorKey =
           typeof opts.cursorPerRow === "string" ? opts.cursorPerRow : "$cursor";
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         (row as any)[cursorKey] = generateCursor(row);
       }
 
@@ -265,7 +263,7 @@ export function defaultEncodeCursor<
   DB,
   TB extends keyof DB,
   O,
-  T extends Fields<DB, TB, O>
+  T extends Fields<DB, TB, O>,
 >(values: EncodeCursorValues<DB, TB, O, T>) {
   const cursor = new URLSearchParams();
 
@@ -289,7 +287,7 @@ export function defaultEncodeCursor<
 
       // eslint-disable-next-line no-fallthrough
       default:
-        throw new Error(`Unable to encode '${key}'`);
+        throw new Error(`Unable to encode '${key.toString()}'`);
     }
   }
 
@@ -300,17 +298,17 @@ export function defaultDecodeCursor<
   DB,
   TB extends keyof DB,
   O,
-  T extends Fields<DB, TB, O>
+  T extends Fields<DB, TB, O>,
 >(
   cursor: string,
-  fields: FieldNames<DB, TB, O, T>
+  fields: FieldNames<DB, TB, O, T>,
 ): DecodedCursor<DB, TB, O, T> {
   let parsed;
 
   try {
     parsed = [
       ...new URLSearchParams(
-        Buffer.from(cursor, "base64url").toString("utf8")
+        Buffer.from(cursor, "base64url").toString("utf8"),
       ).entries(),
     ];
   } catch {
