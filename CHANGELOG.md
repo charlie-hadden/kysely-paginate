@@ -1,5 +1,11 @@
 # kysely-paginate
 
+## 0.3.1
+
+### Patch Changes
+
+- 32232a4: Hopefully fix ESM types
+
 ## 0.3.0
 
 ### Minor Changes
