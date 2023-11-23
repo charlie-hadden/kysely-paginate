@@ -1,6 +1,6 @@
 {
   "name": "kysely-paginate",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Pagination helpers for use with kysely",
   "repository": {
     "type": "git",
